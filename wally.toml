@@ -1,0 +1,17 @@
+[package]
+name = "kike/stew"
+version = "1.0.0"
+registry = "https://github.com/UpliftGames/wally-index"
+licence = "MIT"
+authors = ["SolarScuffle <synapsescuffle@gmail.com>"]
+
+realm = "shared"
+
+
+
+exclude = ["README.MD"]
+
+
+
+
+[dependencies]
