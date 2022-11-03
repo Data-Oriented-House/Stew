@@ -174,29 +174,29 @@ Module.DeleteEntity = function(Entity)
     end
 end
 
-Module.GetDebugText = function() --I might provide better debugging tools in the future because this is pretty bad (mark my words) (this is going into the package)
-    local Text = "DEBUG TEXT:\n\n"
+-- Module.GetDebugText = function() --I might provide better debugging tools in the future because this is pretty bad (mark my words) (this is going into the package)
+--     local Text = "DEBUG TEXT:\n\n"
 
-    for Signature, Collection in pairs(SignatureToCollection) do
-        Text ..= "(Collection "..tonumber(string.reverse(Signature), 2)..") => [\n\t"
+--     for Signature, Collection in pairs(SignatureToCollection) do
+--         Text ..= "(Collection "..tonumber(string.reverse(Signature), 2)..") => [\n\t"
 
-        for _, Entity in ipairs(Collection.Entities) do
-            Text ..= "(Entity "
+--         for _, Entity in ipairs(Collection.Entities) do
+--             Text ..= "(Entity "
 
-            local Names = {}
-            table.insert(Names, tonumber(string.reverse(Entity._Signature), 2))
+--             local Names = {}
+--             table.insert(Names, tonumber(string.reverse(Entity._Signature), 2))
 
-            for Name in pairs(Entity) do
-                if Name ~= "_Signature" then
-                    table.insert(Names, Name)
-                end
-            end
+--             for Name in pairs(Entity) do
+--                 if Name ~= "_Signature" then
+--                     table.insert(Names, Name)
+--                 end
+--             end
 
-            Text ..= table.concat(Names, ", ") .. ")\t"
-        end
+--             Text ..= table.concat(Names, ", ") .. ")\t"
+--         end
 
-        Text ..= "\n],\n\n"
-    end
+--         Text ..= "\n],\n\n"
+--     end
 
-    return Text
-end
+--     return Text
+-- end
