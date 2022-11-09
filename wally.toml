@@ -1,5 +1,5 @@
 [package]
-name = "kike/stew"
+name = "sona/stew"
 version = "1.0.0"
 registry = "https://github.com/UpliftGames/wally-index"
 licence = "MIT"
