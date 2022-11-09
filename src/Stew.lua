@@ -81,6 +81,9 @@ local SignatureToCollection = {}
 local UniversalSignature = "0"
 local EntitySignatures = {}
 
+local DefaultConstructor = function(Entity, ...) return true end
+local DefaultDestructor = function(Entity, Component, ...) end
+
 local function InsertEntity(Entity : Entity, Collection : Collection)
 	local Index = #Collection.Entities + 1
 	Collection.Entities[Index] = Entity
@@ -142,8 +145,8 @@ Module.ConstructComponent = function(Name : Name, Template : Template?)
 	NameToData[Name] = {
 		Signature = StringPlace(NextPlace);
 
-		Constructor = Template.Constructor or Template.constructor or function(Entity, ...) return true end;
-		Destructor = Template.Destructor or Template.destructor or function(Entity, Component, ...) end;
+		Constructor = Template.Constructor or Template.constructor or DefaultConstructor;
+		Destructor = Template.Destructor or Template.destructor or DefaultDestructor;
 	}
 
 	NextPlace = NextPlace + 1
