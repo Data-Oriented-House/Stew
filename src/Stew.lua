@@ -200,3 +200,5 @@ Module.DeleteEntity = function(Entity : Entity)
 
     RemoveEntity(Entity, GetCollection(UniversalSignature))
 end
+
+return Module
