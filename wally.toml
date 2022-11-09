@@ -7,11 +7,6 @@ authors = ["SolarScuffle <synapsescuffle@gmail.com>"]
 
 realm = "shared"
 
-
-
-exclude = ["README.MD"]
-
-
-
+exclude = ["README.md"]
 
 [dependencies]
