@@ -54,55 +54,19 @@ local function StringPlace(Place : number)
 end
 
 type Signature = string
-
---[=[
-    @within Stew
-    @type Name any
-
-    A name is a unique identifier used as a key to access components in entities.
-]=]
 export type Name = any
-
---[=[
-    @within Stew
-    @type Component any
-
-    A component is user-defined data that is stored in an entity. It is defined through the Stew.ConstructComponent function. It is created through the Stew.CreateComponent function.
-]=]
 export type Component = any
-
---[=[
-    @within Stew
-    @tag Read Only
-    @interface Entity
-    .[Name] Component
-
-    An entity is a table storing unique components by their names. It is created through the Stew.CreateEntity function. The entity's components can be accessed through the entity and modified. The entity table itself is read-only however.
-]=]
 export type Entity = {
     [any] : Component;
 }
 
---[=[
-    @within Stew
-    @type Collection {Entity}
-
-    An array of entities containing at least specific components.
-]=]
 export type Collection = { Entity }
-
---[=[
-    @within Stew
-    @interface Template
-    .Constructor|constructor (Entity : Entity, ... : any) -> Component
-    .Destructor|destructor (Entity : Entity, Component : Component, ... : any) -> ()
-]=]
 export type Template = {
-    Constructor : (Entity : Entity, ...any) -> (any);
-    constructor : (Entity : Entity, ...any) -> (any);
+    Constructor : ((Entity : Entity, ...any) -> (any))?;
+    constructor : ((Entity : Entity, ...any) -> (any))?;
 
-    Destructor : (Entity : Entity, Component : Component, ...any) -> ();
-    destructor : (Entity : Entity, Component : Component, ...any) -> ();
+    Destructor : ((Entity : Entity, Component : Component, ...any) -> ())?;
+    destructor : ((Entity : Entity, Component : Component, ...any) -> ())?;
 }
 
 local NextPlace = 1
@@ -128,7 +92,7 @@ end
 local function GetCollection(Signature)
     local Collection = SignatureToCollection[Signature]
     if Collection then return Collection end
-
+    
     Collection = {
         Signature = Signature;
         Entities = {};
@@ -149,11 +113,134 @@ end
 --Initialize the Universal collection
 GetCollection(UniversalSignature)
 
+local Module = {}
+
+Module.GetCollection = function(Names : { Name }) : Collection
+    local Signature = UniversalSignature
+    for _, Name in ipairs(Names) do
+        local Data = NameToData[Name]
+        assert(Data, "Attempting to get collection of non-existant " .. Name .. " component")
+        
+        Signature = StringBOr(Signature, Data.Signature)
+    end
+    
+    return GetCollection(Signature).Entities
+end
+
+Module.ConstructComponent = function(Name : Name, Template : Template)
+    assert(not NameToData[Name], "Attempting to construct component "..Name.." twice")
+    
+    Template = Template or {}
+    
+    NameToData[Name] = {
+        Signature = StringPlace(NextPlace);
+
+        Constructor = Template.Constructor or Template.constructor or function(Entity, ...) return true end;
+        Destructor = Template.Destructor or Template.destructor or function(Entity, Component, ...) end;
+    }
+
+    NextPlace = NextPlace + 1
+end
+
+Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
+    local Data = NameToData[Name]
+    assert(Data, "Attempting to create instance of non-existant " .. Name .. " component")
+    
+    if Entity[Name] then
+        print("Attempting to create instance of " .. Name .. " component when it already exists, overwriting")
+    end
+    
+    Entity[Name] = Data.Constructor(Entity, ...)
+    EntitySignatures[Entity] = StringBOr(EntitySignatures[Entity], Data.Signature)
+    
+    for CollectionSignature, Collection in pairs(SignatureToCollection) do
+        if
+            StringBAnd(CollectionSignature, EntitySignatures[Entity]) == EntitySignatures[Entity] and
+            not Collection.EntityToIndex[Entity]
+            then
+            InsertEntity(Entity, Collection)
+        end
+    end
+end
+
+Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
+    local Data = NameToData[Name]
+    assert(Data, "Attempting to delete instance of non-existant " .. Name .. " component")
+    
+    local Component = Entity[Name]
+    assert(Component, "Attempting to delete instance of " .. Name .. " when it doesn't exist")
+
+    for CollectionSignature, Collection in pairs(SignatureToCollection) do
+        if
+        StringBAnd(CollectionSignature, EntitySignatures[Entity]) == CollectionSignature and
+        Collection.EntityToIndex[Entity]
+        then
+            RemoveEntity(Entity, Collection)
+        end
+    end
+
+    Data.Destructor(Entity, Component, ...)
+    Entity[Name] = nil
+    EntitySignatures[Entity] = StringBAnd(EntitySignatures[Entity], StringBNot(Data.Signature))
+end
+
+Module.CreateEntity = function() : Entity
+    local Entity = {}
+    EntitySignatures[Entity] = UniversalSignature
+    
+    InsertEntity(Entity, GetCollection(UniversalSignature))
+    
+    return Entity
+end
+
+Module.DeleteEntity = function(Entity : Entity)
+    for Name in pairs(Entity) do
+        Module.DeleteComponent(Entity, Name)
+    end
+
+    RemoveEntity(Entity, GetCollection(UniversalSignature))
+end
 
 --[=[
     @class Stew
 ]=]
-local Module = {}
+
+--[=[
+    @within Stew
+    @type Name any
+
+    A name is a unique identifier used as a key to access components in entities.
+]=]
+
+--[=[
+    @within Stew
+    @type Component any
+
+    A component is user-defined data that is stored in an entity. It is defined through the Stew.ConstructComponent function. It is created through the Stew.CreateComponent function.
+]=]
+
+--[=[
+    @within Stew
+    @tag Read Only
+    @interface Entity
+    .[Name] Component
+
+    An entity is a table storing unique components by their names. It is created through the Stew.CreateEntity function. The entity's components can be accessed through the entity and modified. The entity table itself is read-only however.
+]=]
+
+--[=[
+    @within Stew
+    @type Collection {Entity}
+
+    An array of entities containing at least specific components.
+]=]
+
+--[=[
+    @within Stew
+    @interface Template
+    .Constructor|constructor (Entity : Entity, ... : any) -> Component
+    .Destructor|destructor (Entity : Entity, Component : Component, ... : any) -> ()
+]=]
 
 --[=[
     @within Stew
@@ -175,17 +262,6 @@ local Module = {}
     end)
     ```
 ]=]
-Module.GetCollection = function(Names : { Name }) : Collection
-    local Signature = UniversalSignature
-    for _, Name in ipairs(Names) do
-        local Data = NameToData[Name]
-        assert(Data, "Attempting to get collection of non-existant " .. Name .. " component")
-
-        Signature = StringBOr(Signature, Data.Signature)
-    end
-
-    return GetCollection(Signature).Entities
-end
 
 --[=[
     @within Stew
@@ -210,27 +286,13 @@ end
     })
     ```
 ]=]
-Module.ConstructComponent = function(Name : Name, Template : Template)
-    assert(not NameToData[Name], "Attempting to construct component "..Name.." twice")
-
-    Template = Template or {}
-
-    NameToData[Name] = {
-        Signature = StringPlace(NextPlace);
-
-        Constructor = Template.Constructor or Template.constructor or function(Entity, ...) return true end;
-        Destructor = Template.Destructor or Template.destructor or function(Entity, Component, ...) end;
-    }
-
-    NextPlace = NextPlace + 1
-end
 
 --[=[
     @within Stew
     @function CreateComponent
-
-    @param Entity Entity -- The entity to create the component in.
-    @param Name Name -- The name of the component to be created.
+        
+        @param Entity Entity -- The entity to create the component in.
+        @param Name Name -- The name of the component to be created.
     @param ... any -- The arguments of the constructor specified in the template.
 
     Creates a unique component in an entity.
@@ -245,26 +307,6 @@ end
     print(Entity1.Model) --> CoolModel
     ```
 ]=]
-Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
-    local Data = NameToData[Name]
-    assert(Data, "Attempting to create instance of non-existant " .. Name .. " component")
-
-    if Entity[Name] then
-        print("Attempting to create instance of " .. Name .. " component when it already exists, overwriting")
-    end
-
-    Entity[Name] = Data.Constructor(Entity, ...)
-    EntitySignatures[Entity] = StringBOr(EntitySignatures[Entity], Data.Signature)
-
-    for CollectionSignature, Collection in pairs(SignatureToCollection) do
-        if
-            StringBAnd(CollectionSignature, EntitySignatures[Entity]) == EntitySignatures[Entity] and
-            not Collection.EntityToIndex[Entity]
-        then
-            InsertEntity(Entity, Collection)
-        end
-    end
-end
 
 --[=[
     @within Stew
@@ -284,26 +326,6 @@ end
     print(Entity1.Model) --> nil
     ```
 ]=]
-Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
-    local Data = NameToData[Name]
-    assert(Data, "Attempting to delete instance of non-existant " .. Name .. " component")
-
-    local Component = Entity[Name]
-    assert(Component, "Attempting to delete instance of " .. Name .. " when it doesn't exist")
-
-    for CollectionSignature, Collection in pairs(SignatureToCollection) do
-        if
-            StringBAnd(CollectionSignature, EntitySignatures[Entity]) == CollectionSignature and
-            Collection.EntityToIndex[Entity]
-        then
-            RemoveEntity(Entity, Collection)
-        end
-    end
-
-    Data.Destructor(Entity, Component, ...)
-    Entity[Name] = nil
-    EntitySignatures[Entity] = StringBAnd(EntitySignatures[Entity], StringBNot(Data.Signature))
-end
 
 --[=[
     @within Stew
@@ -316,14 +338,6 @@ end
     local Entity1 : Stew.Entity = Stew.CreateEntity()
     ```
 ]=]
-Module.CreateEntity = function() : Entity
-    local Entity = {}
-    EntitySignatures[Entity] = UniversalSignature
-
-    InsertEntity(Entity, GetCollection(UniversalSignature))
-
-    return Entity
-end
 
 --[=[
     @within Stew
@@ -336,10 +350,3 @@ end
     Stew.DeleteEntity(Entity1)
     ```
 ]=]
-Module.DeleteEntity = function(Entity : Entity)
-    for Name in pairs(Entity) do
-        Module.DeleteComponent(Entity, Name)
-    end
-
-    RemoveEntity(Entity, GetCollection(UniversalSignature))
-end
