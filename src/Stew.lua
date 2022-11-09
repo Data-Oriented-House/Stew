@@ -134,7 +134,7 @@ Module.GetCollection = function(Names : { Name }) : Collection
 	return GetCollection(Signature).Entities
 end
 
-Module.ConstructComponent = function(Name : Name, Template : Template)
+Module.ConstructComponent = function(Name : Name, Template : Template?)
 	assert(not NameToData[Name], "Attempting to construct component "..Name.." twice")
 
 	Template = Template or {}
