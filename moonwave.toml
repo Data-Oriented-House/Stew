@@ -8,13 +8,13 @@ classOrder = []
 [docusaurus]
 onBrokenLinks = "throw"
 onBrokenMarkdownLinks = "warn"
-favicon = ".moonwave/favicon.ico"
+favicon = "/favicon.ico"
 
 # From git:
 organizationName = "Sona"
 projectName = "Stew"
-url = "https://github.com"
-baseUrl = "/SolarScuffle-Bot/Stew/"
+url = "https://SolarScuffle-Bot.github.io"
+baseUrl = "/Stew/"
 tagline = "Brewing the next generation"
 
 # [navbar]
