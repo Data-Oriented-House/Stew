@@ -133,7 +133,7 @@ Module.GetCollection = function(Names : { Name }) : Collection
 
 		Signature = StringBOr(Signature, Data.Signature)
 	end
-	
+
 	return GetCollection(Signature).Entities
 end
 
@@ -164,7 +164,6 @@ Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
 	EntitySignatures[Entity] = StringBOr(EntitySignatures[Entity], Data.Signature)
 
 	for CollectionSignature, Collection in pairs(SignatureToCollection) do
-		print(CollectionSignature, EntitySignatures[Entity], StringBAnd(CollectionSignature, EntitySignatures[Entity]), not Collection.EntityToIndex[Entity], StringBAnd(CollectionSignature, EntitySignatures[Entity]) == CollectionSignature)
 		if
 			not Collection.EntityToIndex[Entity] and
 			StringBAnd(CollectionSignature, EntitySignatures[Entity]) == CollectionSignature
