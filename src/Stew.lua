@@ -14,8 +14,6 @@ local function StringBAnd(String1 : string, String2 : string)
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-warn(StringBAnd("010", "111"))
-
 local function StringBOr(String1 : string, String2 : string)
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
@@ -81,9 +79,6 @@ local SignatureToCollection = {}
 local UniversalSignature = "0"
 local EntitySignatures = {}
 
-local DefaultConstructor = function(Entity, ...) return true end
-local DefaultDestructor = function(Entity, Component, ...) end
-
 local function InsertEntity(Entity : Entity, Collection : Collection)
 	local Index = #Collection.Entities + 1
 	Collection.Entities[Index] = Entity
@@ -133,11 +128,11 @@ Module.GetCollection = function(Names : { Name }) : Collection
 
 		Signature = StringBOr(Signature, Data.Signature)
 	end
-
+	
 	return GetCollection(Signature).Entities
 end
 
-Module.ConstructComponent = function(Name : Name, Template : Template?)
+Module.ConstructComponent = function(Name : Name, Template : Template)
 	assert(not NameToData[Name], "Attempting to construct component "..Name.." twice")
 
 	Template = Template or {}
@@ -145,8 +140,8 @@ Module.ConstructComponent = function(Name : Name, Template : Template?)
 	NameToData[Name] = {
 		Signature = StringPlace(NextPlace);
 
-		Constructor = Template.Constructor or Template.constructor or DefaultConstructor;
-		Destructor = Template.Destructor or Template.destructor or DefaultDestructor;
+		Constructor = Template.Constructor or Template.constructor or function(Entity, ...) return true end;
+		Destructor = Template.Destructor or Template.destructor or function(Entity, Component, ...) end;
 	}
 
 	NextPlace = NextPlace + 1
@@ -182,7 +177,7 @@ Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
 
 	for CollectionSignature, Collection in pairs(SignatureToCollection) do
 		if
-			StringBAnd(CollectionSignature, EntitySignatures[Entity]) == CollectionSignature and
+			StringBAnd(Data.Signature, CollectionSignature) == Data.Signature and
 			Collection.EntityToIndex[Entity]
 		then
 			RemoveEntity(Entity, Collection)
@@ -203,12 +198,14 @@ Module.CreateEntity = function() : Entity
 	return Entity
 end
 
-Module.DeleteEntity = function(Entity : Entity)
+Module.DeleteEntity = function(Entity : Entity)	
 	for Name in pairs(Entity) do
 		Module.DeleteComponent(Entity, Name)
 	end
-
+	
 	RemoveEntity(Entity, GetCollection(UniversalSignature))
+	
+	EntitySignatures[Entity] = nil
 end
 
 return Module
