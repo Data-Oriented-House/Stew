@@ -151,11 +151,13 @@ Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
 	local Data = NameToData[Name]
 	assert(Data, "Attempting to create instance of non-existant " .. Name .. " component")
 
-	if Entity[Name] then
-		print("Attempting to create instance of " .. Name .. " component when it already exists, overwriting")
-	end
+    if Entity[Name] then
+        Module.DeleteComponent(Entity, Name)
+    end
 
 	Entity[Name] = Data.Constructor(Entity, ...)
+    if Entity[Name] == nil then return end
+
 	EntitySignatures[Entity] = StringBOr(EntitySignatures[Entity], Data.Signature)
 
 	for CollectionSignature, Collection in pairs(SignatureToCollection) do
@@ -173,7 +175,12 @@ Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
 	assert(Data, "Attempting to delete instance of non-existant " .. Name .. " component")
 
 	local Component = Entity[Name]
-	assert(Component, "Attempting to delete instance of " .. Name .. " when it doesn't exist")
+	if not Component then return end
+
+    if not Data.Destructor(Entity, Component, ...) then return end
+
+	Entity[Name] = nil
+	EntitySignatures[Entity] = StringBAnd(EntitySignatures[Entity], StringBNot(Data.Signature))
 
 	for CollectionSignature, Collection in pairs(SignatureToCollection) do
 		if
@@ -183,10 +190,6 @@ Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
 			RemoveEntity(Entity, Collection)
 		end
 	end
-
-	Data.Destructor(Entity, Component, ...)
-	Entity[Name] = nil
-	EntitySignatures[Entity] = StringBAnd(EntitySignatures[Entity], StringBNot(Data.Signature))
 end
 
 Module.CreateEntity = function() : Entity
