@@ -1,9 +1,9 @@
 [package]
 name = "solarscuffle-bot/stew"
-version = "1.0.0"
+version = "1.0.1"
 registry = "https://github.com/UpliftGames/wally-index"
 licence = "MIT"
-authors = ["SolarScuffle <synapsescuffle@gmail.com>"]
+authors = ["Sona <synapsescuffle@gmail.com>"]
 
 realm = "shared"
 
