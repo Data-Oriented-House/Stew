@@ -177,7 +177,7 @@ Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
 	local Component = Entity[Name]
 	if not Component then return end
 
-    if not Data.Destructor(Entity, Component, ...) then return end
+    if Data.Destructor(Entity, Component, ...) ~= nil then return end
 
 	Entity[Name] = nil
 	EntitySignatures[Entity] = StringBAnd(EntitySignatures[Entity], StringBNot(Data.Signature))
