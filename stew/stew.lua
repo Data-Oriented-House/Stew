@@ -128,7 +128,7 @@ Module.GetCollection = function(Names : { Name }) : Collection
 
 		Signature = StringBOr(Signature, Data.Signature)
 	end
-	
+
 	return GetCollection(Signature).Entities
 end
 
@@ -144,7 +144,7 @@ Module.ConstructComponent = function(Name : Name, Template : Template)
 		Destructor = Template.Destructor or Template.destructor or function(Entity, Component, ...) end;
 	}
 
-	NextPlace = NextPlace + 1
+	NextPlace += 1
 end
 
 Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
@@ -177,7 +177,7 @@ Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
 	local Component = Entity[Name]
 	if not Component then return end
 
-    if not Data.Destructor(Entity, Component, ...) then return end
+    if Data.Destructor(Entity, Component, ...) ~= nil then return end
 
 	Entity[Name] = nil
 	EntitySignatures[Entity] = StringBAnd(EntitySignatures[Entity], StringBNot(Data.Signature))
