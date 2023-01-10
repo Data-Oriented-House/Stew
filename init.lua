@@ -152,7 +152,7 @@ Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
 	assert(Data, "Attempting to create instance of non-existant " .. Name .. " component")
 
     if Entity[Name] then
-        Module.DeleteComponent(Entity, Name)
+        return
     end
 
 	Entity[Name] = Data.Constructor(Entity, ...)
