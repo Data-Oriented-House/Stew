@@ -30,19 +30,20 @@ local function StringBOr(String1 : string, String2 : string)
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-local function StringBNot(String1 : string)
-	local String2 = table.create(#String1, 1)
+local function StringBXOr(String1 : string, String2 : string)
+	local Length = math.max(#String1, #String2)
+    local String3 = table.create(Length, 0)
 
-	for i in ipairs(String2) do
-		String2[i] = string.byte(String1, i) == 48 and 1 or 0
+	for i in ipairs(String3) do
+		String3[i] = string.byte(String1, i) == string.byte(String2, i) and 0 or 1
 	end
 
-	for i = #String2, 1, -1 do
-		if String2[i] ~= 0 then break end
-		String2[i] = nil
+	for i = #String3, 1, -1 do
+		if String3[i] ~= 0 then break end
+		String3[i] = nil
 	end
 
-	return #String2 == 0 and "0" or table.concat(String2, '')
+	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
 local function StringPlace(Place : number)
@@ -180,7 +181,7 @@ Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
     if Data.Destructor(Entity, Component, ...) ~= nil then return end
 
 	Entity[Name] = nil
-	EntitySignatures[Entity] = StringBAnd(EntitySignatures[Entity], StringBNot(Data.Signature))
+	EntitySignatures[Entity] = StringBXOr(EntitySignatures[Entity], Data.Signature)
 
 	for CollectionSignature, Collection in pairs(SignatureToCollection) do
 		if
