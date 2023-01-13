@@ -74,11 +74,14 @@ export type Template = {
 	destructor : ((Entity : Entity, Component : Component, ...any) -> ())?;
 }
 
-local NextPlace = 1
-local NameToData = {}
-local SignatureToCollection = {}
-local UniversalSignature = "0"
-local EntitySignatures = {}
+local Module = {}
+
+Module._NextPlace = 1
+Module._UniversalSignature = "0"
+
+Module._NameToData = {}
+Module._EntitySignatures = {}
+Module._SignatureToCollection = {}
 
 local function InsertEntity(Entity : Entity, Collection : Collection)
 	local Index = #Collection.Entities + 1
@@ -95,7 +98,7 @@ local function RemoveEntity(Entity : Entity, Collection : Collection)
 end
 
 local function GetCollection(Signature : Signature)
-	local Collection = SignatureToCollection[Signature]
+	local Collection = Module._SignatureToCollection[Signature]
 	if Collection then return Collection end
 
 	Collection = {
@@ -104,10 +107,10 @@ local function GetCollection(Signature : Signature)
 		EntityToIndex = {};
 	}
 
-	SignatureToCollection[Signature] = Collection
+	Module._SignatureToCollection[Signature] = Collection
 
-	for _, Entity in ipairs(SignatureToCollection[UniversalSignature].Entities) do
-		if StringBAnd(Collection.Signature, EntitySignatures[Entity]) == Collection.Signature then
+	for _, Entity in ipairs(Module._SignatureToCollection[Module._UniversalSignature].Entities) do
+		if StringBAnd(Collection.Signature, Module._EntitySignatures[Entity]) == Collection.Signature then
 			InsertEntity(Entity, Collection)
 		end
 	end
@@ -115,16 +118,17 @@ local function GetCollection(Signature : Signature)
 	return Collection
 end
 
---Initialize the Universal collection
-GetCollection(UniversalSignature)
+local function DefaultConstructor(Entity : Entity, ... : any) return true end
+local function DefaultDestructor(Entity : Entity, Component : Component, ... : any) end
 
-local Module = {}
+--Initialize the Universal collection
+GetCollection(Module._UniversalSignature)
 
 Module.GetCollection = function(Names : { Name }) : Collection
-	local Signature = UniversalSignature
+	local Signature = Module._UniversalSignature
 
 	for _, Name in ipairs(Names) do
-		local Data = NameToData[Name]
+		local Data = Module._NameToData[Name]
 		assert(Data, "Attempting to get collection of non-existant " .. Name .. " component")
 
 		Signature = StringBOr(Signature, Data.Signature)
@@ -134,22 +138,22 @@ Module.GetCollection = function(Names : { Name }) : Collection
 end
 
 Module.ConstructComponent = function(Name : Name, Template : Template)
-	assert(not NameToData[Name], "Attempting to construct component "..Name.." twice")
+	assert(not Module._NameToData[Name], "Attempting to construct component "..Name.." twice")
 
 	Template = Template or {}
 
-	NameToData[Name] = {
-		Signature = StringPlace(NextPlace);
+	Module._NameToData[Name] = {
+		Signature = StringPlace(Module._NextPlace);
 
-		Constructor = Template.Constructor or Template.constructor or function(Entity, ...) return true end;
-		Destructor = Template.Destructor or Template.destructor or function(Entity, Component, ...) end;
+		Constructor = Template.Constructor or Template.constructor or DefaultConstructor;
+		Destructor = Template.Destructor or Template.destructor or DefaultDestructor;
 	}
 
-	NextPlace += 1
+	Module._NextPlace += 1
 end
 
 Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
-	local Data = NameToData[Name]
+	local Data = Module._NameToData[Name]
 	assert(Data, "Attempting to create instance of non-existant " .. Name .. " component")
 
     if Entity[Name] then
@@ -159,12 +163,12 @@ Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
 	Entity[Name] = Data.Constructor(Entity, ...)
     if Entity[Name] == nil then return end
 
-	EntitySignatures[Entity] = StringBOr(EntitySignatures[Entity], Data.Signature)
+	Module._EntitySignatures[Entity] = StringBOr(Module._EntitySignatures[Entity], Data.Signature)
 
-	for CollectionSignature, Collection in pairs(SignatureToCollection) do
+	for CollectionSignature, Collection in pairs(Module._SignatureToCollection) do
 		if
 			not Collection.EntityToIndex[Entity] and
-			StringBAnd(CollectionSignature, EntitySignatures[Entity]) == CollectionSignature
+			StringBAnd(CollectionSignature, Module._EntitySignatures[Entity]) == CollectionSignature
 		then
 			InsertEntity(Entity, Collection)
 		end
@@ -172,7 +176,7 @@ Module.CreateComponent = function(Entity : Entity, Name : Name, ... : any)
 end
 
 Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
-	local Data = NameToData[Name]
+	local Data = Module._NameToData[Name]
 	assert(Data, "Attempting to delete instance of non-existant " .. Name .. " component")
 
 	local Component = Entity[Name]
@@ -181,9 +185,9 @@ Module.DeleteComponent = function(Entity : Entity, Name : Name, ... : any)
     if Data.Destructor(Entity, Component, ...) ~= nil then return end
 
 	Entity[Name] = nil
-	EntitySignatures[Entity] = StringBXOr(EntitySignatures[Entity], Data.Signature)
+	Module._EntitySignatures[Entity] = StringBXOr(Module._EntitySignatures[Entity], Data.Signature)
 
-	for CollectionSignature, Collection in pairs(SignatureToCollection) do
+	for CollectionSignature, Collection in pairs(Module._SignatureToCollection) do
 		if
 			StringBAnd(Data.Signature, CollectionSignature) == Data.Signature and
 			Collection.EntityToIndex[Entity]
@@ -195,9 +199,9 @@ end
 
 Module.CreateEntity = function() : Entity
 	local Entity = {}
-	EntitySignatures[Entity] = UniversalSignature
+	Module._EntitySignatures[Entity] = Module._UniversalSignature
 
-	InsertEntity(Entity, GetCollection(UniversalSignature))
+	InsertEntity(Entity, GetCollection(Module._UniversalSignature))
 
 	return Entity
 end
@@ -206,10 +210,10 @@ Module.DeleteEntity = function(Entity : Entity)
 	for Name in pairs(Entity) do
 		Module.DeleteComponent(Entity, Name)
 	end
-	
-	RemoveEntity(Entity, GetCollection(UniversalSignature))
-	
-	EntitySignatures[Entity] = nil
+
+	RemoveEntity(Entity, GetCollection(Module._UniversalSignature))
+
+	Module._EntitySignatures[Entity] = nil
 end
 
 return Module
