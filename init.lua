@@ -234,10 +234,15 @@ function Module.Entity.Delete(Entity : Entity)
 	UniversalArchetype.Collection[Entity] = nil
 end
 
-function Module.Entity.Get(Entity : Entity, Name : Name?): ({ [Name] : Component }?) | (Component?)
+function Module.Entity.Component(Entity : Entity, Name : Name): Component?
 	local EntityData = Module._EntityToData[Entity] or {}
 	local Components = EntityData.Components or {}
-	return if Name then Components[Name] else Components
+	return Components[Name]
+end
+
+function Module.Entity.Components(Entity : Entity): { [Name] : Component }
+	local EntityData = Module._EntityToData[Entity] or {}
+	return EntityData.Components or {}
 end
 
 return Module
