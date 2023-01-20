@@ -207,6 +207,17 @@ function Module.Component.Delete(Entity : Entity, Name : Name, ... : any)
 	end
 end
 
+function Module.Component.Get(Entity : Entity, Name : Name): Component?
+	local EntityData = Module._EntityToData[Entity] or {}
+	local Components = EntityData.Components or {}
+	return Components[Name]
+end
+
+function Module.Entity.GetAll(Entity : Entity): { [Name] : Component }
+	local EntityData = Module._EntityToData[Entity] or {}
+	return EntityData.Components or {}
+end
+
 Module.Entity = {}
 
 function Module.Entity.Create(Any: any?) : Entity
@@ -232,17 +243,6 @@ function Module.Entity.Delete(Entity : Entity)
 
 	local UniversalArchetype = GetArchetype(Module._UniversalSignature)
 	UniversalArchetype.Collection[Entity] = nil
-end
-
-function Module.Entity.Component(Entity : Entity, Name : Name): Component?
-	local EntityData = Module._EntityToData[Entity] or {}
-	local Components = EntityData.Components or {}
-	return Components[Name]
-end
-
-function Module.Entity.Components(Entity : Entity): { [Name] : Component }
-	local EntityData = Module._EntityToData[Entity] or {}
-	return EntityData.Components or {}
 end
 
 return Module
