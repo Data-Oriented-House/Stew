@@ -126,8 +126,10 @@ end
 local function DefaultDestructor(Entity : Entity, Name : Name, ... : any)
 end
 
+-- The Collection namespace, has methods for dealing with collections of collections of entities
 Module.Collection = {}
 
+-- Gets the collection of entities that have all of the specified components
 function Module.Collection.Get(Names : { Name }) : Collection
 	local Signature = Module._UniversalSignature
 
@@ -141,8 +143,10 @@ function Module.Collection.Get(Names : { Name }) : Collection
 	return GetArchetype(Signature).Collection
 end
 
+-- The Component namespace, has methods for dealing with components
 Module.Component = {}
 
+-- Builds a component, this must be called before any components of this type can be created
 function Module.Component.Build(Name : Name, Template : Template?)
 	assert(not Module._NameToData[Name], "Attempting to build component " .. tostring(Name) .. " twice")
 
@@ -158,6 +162,7 @@ function Module.Component.Build(Name : Name, Template : Template?)
 	Module._NextPlace += 1
 end
 
+-- Creates and associates a component with the entity
 function Module.Component.Create(Entity : Entity, Name : Name, ... : any)
 	local ComponentData = Module._NameToData[Name]
 	assert(ComponentData, "Attempting to create instance of non-existant " .. tostring(Name) .. " component")
@@ -185,6 +190,7 @@ function Module.Component.Create(Entity : Entity, Name : Name, ... : any)
 	end
 end
 
+-- Deletes and disassociates a component from the entity
 function Module.Component.Delete(Entity : Entity, Name : Name, ... : any)
 	local ComponentData = Module._NameToData[Name]
 	assert(ComponentData, "Attempting to delete instance of non-existant " .. tostring(Name) .. " component")
@@ -207,19 +213,23 @@ function Module.Component.Delete(Entity : Entity, Name : Name, ... : any)
 	end
 end
 
+-- Gets a component from an entity
 function Module.Component.Get(Entity : Entity, Name : Name): Component?
 	local EntityData = Module._EntityToData[Entity] or {}
 	local Components = EntityData.Components or {}
 	return Components[Name]
 end
 
+-- Gets all components from an entity
 function Module.Component.GetAll(Entity : Entity): { [Name] : Component }
 	local EntityData = Module._EntityToData[Entity] or {}
 	return EntityData.Components or {}
 end
 
+-- The Entity namespace, has methods for dealing with entities
 Module.Entity = {}
 
+-- Creates an entity from an existing thing or creates a new one
 function Module.Entity.Create(Any: any?) : Entity
 	local Entity: Entity = if Any ~= nil then Any else newproxy()
 	Module._EntityToData[Entity] = {
@@ -233,6 +243,7 @@ function Module.Entity.Create(Any: any?) : Entity
 	return Entity
 end
 
+-- Deletes an entity and all of its components
 function Module.Entity.Delete(Entity : Entity)
 	local EntityData = Module._EntityToData[Entity]
 	if not EntityData then return end
