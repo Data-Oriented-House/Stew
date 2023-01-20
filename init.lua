@@ -213,7 +213,7 @@ function Module.Component.Get(Entity : Entity, Name : Name): Component?
 	return Components[Name]
 end
 
-function Module.Entity.GetAll(Entity : Entity): { [Name] : Component }
+function Module.Component.GetAll(Entity : Entity): { [Name] : Component }
 	local EntityData = Module._EntityToData[Entity] or {}
 	return EntityData.Components or {}
 end
