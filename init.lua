@@ -126,7 +126,7 @@ end
 local function DefaultDestructor(Entity : Entity, Name : Name, ... : any)
 end
 
--- The Collection namespace, has methods for dealing with collections of collections of entities
+-- The Collection namespace, has methods for dealing with collections
 Module.Collection = {}
 
 -- Gets the collection of entities that have all of the specified components
@@ -229,7 +229,7 @@ end
 -- The Entity namespace, has methods for dealing with entities
 Module.Entity = {}
 
--- Creates an entity from an existing thing or creates a new one
+-- Creates an entity from an existing thing or creates a new one if none is provided
 function Module.Entity.Create(Any: any?) : Entity
 	local Entity: Entity = if Any ~= nil then Any else newproxy()
 	Module._EntityToData[Entity] = {
@@ -243,7 +243,7 @@ function Module.Entity.Create(Any: any?) : Entity
 	return Entity
 end
 
--- Deletes an entity and all of its components
+-- Deletes an entity internally and all of its components
 function Module.Entity.Delete(Entity : Entity)
 	local EntityData = Module._EntityToData[Entity]
 	if not EntityData then return end
