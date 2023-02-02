@@ -1,3 +1,5 @@
+--!strict
+
 local function StringBAnd(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
@@ -58,22 +60,22 @@ type Signature = string
 
 export type Name = any
 export type Component = any
-export type Entity = any
+export type Entity<E> = E
 
-export type Collection = { [Entity] : true }
+export type Collection = { [Entity<any>] : true }
 
-export type Template = {
-	Constructor : ((Entity : Entity, Name: Name, ...any) -> Component)?;
-	constructor : ((Entity : Entity, Name: Name, ...any) -> Component)?;
+export type Template<E, N, C> = {
+	Constructor : ((Entity : Entity<E>, Name: N, ...any) -> C)?;
+	constructor : ((Entity : Entity<E>, Name: N, ...any) -> C)?;
 
-	Destructor : ((Entity : Entity, Name : Name, ...any) -> ())?;
-	destructor : ((Entity : Entity, Name : Name, ...any) -> ())?;
+	Destructor : ((Entity : Entity<E>, Name : N, ...any) -> ())?;
+	destructor : ((Entity : Entity<E>, Name : N, ...any) -> ())?;
 }
 
-type Data = {
+type Data<E, N, C> = {
 	Signature : Signature;
-	Constructor : ((Entity : Entity, Name: Name, ...any) -> Component)?;
-	Destructor : ((Entity : Entity, Name : Name, ...any) -> ())?;
+	Constructor : (Entity : Entity<E>, Name: N, ...any) -> C;
+	Destructor : (Entity : Entity<E>, Name : N, ...any) -> ();
 }
 
 type Archetype = {
@@ -87,9 +89,9 @@ Module._NextPlace = 1
 Module._UniversalSignature = "0"
 
 Module._SignatureToArchetype = {} :: { [Signature] : Archetype }
-Module._NameToData = {} :: { [Name] : Data }
+Module._NameToData = {} :: { [any] : Data<any, Name, Component> }
 Module._EntityToData = {} :: {
-	[Entity] : {
+	[Entity<any>] : {
 		Signature : Signature;
 		Components : { [Name] : Component };
 	}
@@ -119,18 +121,18 @@ end
 --Initialize the Universal collection
 GetArchetype(Module._UniversalSignature)
 
-local function DefaultConstructor(Entity : Entity, Name : Name, ... : any) : true
+local function DefaultConstructor() : true
 	return true
 end
 
-local function DefaultDestructor(Entity : Entity, Name : Name, ... : any)
+local function DefaultDestructor()
 end
 
 -- The Collection namespace, has methods for dealing with collections
 Module.Collection = {}
 
 -- Gets the collection of entities that have all of the specified components
-function Module.Collection.Get(Names : { Name }) : Collection
+function Module.Collection.Get(Names : { any }) : Collection
 	local Signature = Module._UniversalSignature
 
 	for _, Name in Names do
@@ -147,10 +149,10 @@ end
 Module.Component = {}
 
 -- Builds a component, this must be called before any components of this type can be created
-function Module.Component.Build(Name : Name, Template : Template?)
+function Module.Component.Build<E, N, C>(Name : N, Template : Template<E, N, C>?)
 	assert(not Module._NameToData[Name], "Attempting to build component " .. tostring(Name) .. " twice")
 
-	local Template = Template or {} :: Template
+	local Template = Template or {} :: Template<E, N, C>
 
 	Module._NameToData[Name] = {
 		Signature = StringPlace(Module._NextPlace);
@@ -163,7 +165,7 @@ function Module.Component.Build(Name : Name, Template : Template?)
 end
 
 -- Creates and associates a component with the entity
-function Module.Component.Create(Entity : Entity, Name : Name, ... : any)
+function Module.Component.Create<E, N>(Entity : Entity<E>, Name : N, ... : any)
 	local ComponentData = Module._NameToData[Name]
 	assert(ComponentData, "Attempting to create instance of non-existant " .. tostring(Name) .. " component")
 
@@ -191,7 +193,7 @@ function Module.Component.Create(Entity : Entity, Name : Name, ... : any)
 end
 
 -- Deletes and disassociates a component from the entity
-function Module.Component.Delete(Entity : Entity, Name : Name, ... : any)
+function Module.Component.Delete<E, N>(Entity : Entity<E>, Name : N, ... : any)
 	local ComponentData = Module._NameToData[Name]
 	assert(ComponentData, "Attempting to delete instance of non-existant " .. tostring(Name) .. " component")
 
@@ -213,25 +215,28 @@ function Module.Component.Delete(Entity : Entity, Name : Name, ... : any)
 	end
 end
 
+local Default = {
+	Components = {},
+}
+
 -- Gets a component from an entity
-function Module.Component.Get(Entity : Entity, Name : Name): Component?
-	local EntityData = Module._EntityToData[Entity] or {}
-	local Components = EntityData.Components or {}
-	return Components[Name]
+function Module.Component.Get<E, N>(Entity : Entity<E>, Name : N): Component?
+	local EntityData = (Module._EntityToData[Entity] or Default) :: typeof(Default)
+	return EntityData.Components[Name]
 end
 
 -- Gets all components from an entity
-function Module.Component.GetAll(Entity : Entity): { [Name] : Component }
-	local EntityData = Module._EntityToData[Entity] or {}
-	return EntityData.Components or {}
+function Module.Component.GetAll<E>(Entity : Entity<E>): { [Name] : Component }
+	local EntityData = Module._EntityToData[Entity] or Default
+	return EntityData.Components
 end
 
 -- The Entity namespace, has methods for dealing with entities
 Module.Entity = {}
 
 -- Creates an entity from an existing thing or creates a new one if none is provided
-function Module.Entity.Create(Any: any?) : Entity
-	local Entity: Entity = if Any ~= nil then Any else newproxy()
+function Module.Entity.Create<E>(Any: E?) : Entity<E>
+	local Entity: Entity<E> = if Any ~= nil then Any else newproxy()
 	Module._EntityToData[Entity] = {
 		Signature = Module._UniversalSignature;
 		Components = {};
@@ -244,7 +249,7 @@ function Module.Entity.Create(Any: any?) : Entity
 end
 
 -- Deletes an entity internally and all of its components
-function Module.Entity.Delete(Entity : Entity)
+function Module.Entity.Delete<E>(Entity : Entity<E>)
 	local EntityData = Module._EntityToData[Entity]
 	if not EntityData then return end
 
