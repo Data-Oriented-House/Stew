@@ -89,7 +89,7 @@ Module._NextPlace = 1
 Module._UniversalSignature = "0"
 
 Module._SignatureToArchetype = {} :: { [Signature] : Archetype }
-Module._NameToData = {} :: { [any] : Data<any, Name, Component> }
+Module._NameToData = {} :: { [Name] : Data<any, Name, Component> }
 Module._EntityToData = {} :: {
 	[Entity<any>] : {
 		Signature : Signature;
@@ -145,6 +145,11 @@ function Module.Collection.Get(Names : { any }) : Collection
 	return GetArchetype(Signature).Collection
 end
 
+-- Gets the first entity in a collection of entities that have all of the specified components. Order is not guaranteed.
+function Module.Collection.GetFirst(Names : { any }) : Entity<any>?
+	return next(Module.Collection.Get(Names))
+end
+
 -- The Component namespace, has methods for dealing with components
 Module.Component = {}
 
@@ -164,8 +169,8 @@ function Module.Component.Build<E, N, C>(Name : N, Template : Template<E, N, C>?
 	Module._NextPlace += 1
 end
 
--- Creates and associates a component with the entity
-function Module.Component.Create<E, N>(Entity : Entity<E>, Name : N, ... : any)
+-- Creates a component, associates it with the entity, and returns it
+function Module.Component.Create<E, N>(Entity : Entity<E>, Name : N, ... : any): Component?
 	local ComponentData = Module._NameToData[Name]
 	assert(ComponentData, "Attempting to create instance of non-existant " .. tostring(Name) .. " component")
 
@@ -176,8 +181,9 @@ function Module.Component.Create<E, N>(Entity : Entity<E>, Name : N, ... : any)
 	end
 
 	if EntityData.Components[Name] then return end
-	EntityData.Components[Name] = ComponentData.Constructor(Entity, Name, ...)
-	if EntityData.Components[Name] == nil then return end
+	local Component = ComponentData.Constructor(Entity, Name, ...)
+	if Component == nil then return end
+	EntityData.Components[Name] = Component
 
 	local Signature = StringBOr(EntityData.Signature, ComponentData.Signature)
 	EntityData.Signature = Signature
@@ -190,6 +196,8 @@ function Module.Component.Create<E, N>(Entity : Entity<E>, Name : N, ... : any)
 			Archetype.Collection[Entity] = true
 		end
 	end
+
+	return EntityData.Components[Name]
 end
 
 -- Deletes and disassociates a component from the entity
