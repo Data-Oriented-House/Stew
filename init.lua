@@ -137,8 +137,6 @@ export type World = {
 
 local Module = {}
 
-local UniversalSignature = "0"
-
 local function GetArchetype(World: World, Signature : Signature): Archetype
 	local FoundArchetype = World._SignatureToArchetype[Signature]
 	if FoundArchetype then return FoundArchetype end
@@ -149,7 +147,7 @@ local function GetArchetype(World: World, Signature : Signature): Archetype
 	}
 	World._SignatureToArchetype[Signature] = Archetype
 
-	local UniversalArchetype = World._SignatureToArchetype[UniversalSignature]
+	local UniversalArchetype = World._SignatureToArchetype["0"]
 	for Entity in UniversalArchetype.Collection do
 		local EntityData = World._EntityToData[Entity]
 		if String.BAnd(Archetype.Signature, EntityData.Signature) == Archetype.Signature then
@@ -183,8 +181,8 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 		_EntityToData = {};
 
 		_SignatureToArchetype = {
-			[UniversalSignature] = {
-				Signature = UniversalSignature;
+			["0"] = {
+				Signature = "0";
 				Collection = {} :: Collection;
 			};
 		};
@@ -208,7 +206,7 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 
 	-- Gets the collection of entities that have all of the specified components
 	function World.Collection.Get(Names : { any }) : Collection
-		local Signature = UniversalSignature
+		local Signature = "0"
 
 		for _, Name in Names do
 			local Data = World._NameToData[Name]
@@ -327,11 +325,11 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 		assert(not World._EntityToData[Any], "Attempting to register entity twice")
 
 		World._EntityToData[Any] = {
-			Signature = UniversalSignature;
+			Signature = "0";
 			Components = {};
 		}
 
-		local UniversalArchetype = GetArchetype(World, UniversalSignature)
+		local UniversalArchetype = GetArchetype(World, "0")
 		UniversalArchetype.Collection[Any] = true
 
 		World._On.Entity.Create(Any)
@@ -353,7 +351,7 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 			World.Component.Delete(Entity, Name)
 		end
 
-		local UniversalArchetype = GetArchetype(World, UniversalSignature)
+		local UniversalArchetype = GetArchetype(World, "0")
 		UniversalArchetype.Collection[Entity] = nil
 
 		World._On.Entity.Delete(Entity)
