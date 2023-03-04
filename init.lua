@@ -95,8 +95,8 @@ export type EntityData = {
 export type World = {
 	_NextPlace : number;
 
-	_NameToData           : { [Name] : ComponentData<any, Name, Component> };
-	_EntityToData         : { [Entity<any>] : EntityData };
+	_NameToData            : { [Name] : ComponentData<any, Name, Component> };
+	_EntityToData          : { [Entity<any>] : EntityData };
 	_SignatureToCollection : { [Signature] : Collection };
 
 	_On : {
@@ -179,7 +179,7 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 
 		_On = {
 			Component = {
-				Build  = WorldArgs.OnComponentBuild or DefaultOn;
+				Build  = WorldArgs.OnComponentBuild  or DefaultOn;
 				Create = WorldArgs.OnComponentCreate or DefaultOn;
 				Delete = WorldArgs.OnComponentDelete or DefaultOn;
 			};
