@@ -142,7 +142,7 @@ export type World = {
 	Entity : WorldEntity;
 }
 
-local Module = {}
+local Stew = {}
 
 local function GetCollection(World: World, Signature : Signature): Collection
 	local FoundCollection = World._SignatureToCollection[Signature]
@@ -173,10 +173,10 @@ local function DefaultOn()
 end
 
 -- The World namespace, has methods for dealing with worlds
-Module.World = {}
+Stew.World = {}
 
 -- Creates a new world, and for convenience, creates all methods that pass a world as the first argument, too
-function Module.World.Create(WorldArgs: WorldArgs?) : World
+function Stew.World.Create(WorldArgs: WorldArgs?) : World
 	local WorldComponent = if WorldArgs and WorldArgs.On then WorldArgs.On.Component else nil
 	local WorldEntity = if WorldArgs and WorldArgs.On then WorldArgs.On.Entity else nil
 
@@ -352,4 +352,4 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 	return World
 end
 
-return Module
+return Stew
