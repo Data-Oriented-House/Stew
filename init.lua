@@ -92,16 +92,12 @@ export type EntityData = {
 	Components : { [Name] : Component };
 }
 
-export type Archetype = {
-	Signature  : Signature;
-	Collection : Collection;
-}
 export type World = {
 	_NextPlace : number;
 
 	_NameToData           : { [Name] : ComponentData<any, Name, Component> };
 	_EntityToData         : { [Entity<any>] : EntityData };
-	_SignatureToArchetype : { [Signature] : Archetype };
+	_SignatureToCollection : { [Signature] : Collection };
 
 	_On : {
 		Component : {
@@ -137,25 +133,22 @@ export type World = {
 
 local Module = {}
 
-local function GetArchetype(World: World, Signature : Signature): Archetype
-	local FoundArchetype = World._SignatureToArchetype[Signature]
+local function GetCollection(World: World, Signature : Signature): Collection
+	local FoundArchetype = World._SignatureToCollection[Signature]
 	if FoundArchetype then return FoundArchetype end
 
-	local Archetype: Archetype = {
-		Signature = Signature;
-		Collection = {} :: Collection;
-	}
-	World._SignatureToArchetype[Signature] = Archetype
+	local Collection = {} :: Collection
+	World._SignatureToCollection[Signature] = Collection
 
-	local UniversalArchetype = World._SignatureToArchetype["0"]
+	local UniversalArchetype = World._SignatureToCollection["0"]
 	for Entity in UniversalArchetype.Collection do
 		local EntityData = World._EntityToData[Entity]
-		if String.BAnd(Archetype.Signature, EntityData.Signature) == Archetype.Signature then
-			Archetype.Collection[Entity] = true
+		if String.BAnd(Signature, EntityData.Signature) == Signature then
+			Collection[Entity] = true
 		end
 	end
 
-	return Archetype
+	return Collection
 end
 
 local function DefaultConstructor() : true
@@ -180,11 +173,8 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 		_NameToData = {};
 		_EntityToData = {};
 
-		_SignatureToArchetype = {
-			["0"] = {
-				Signature = "0";
-				Collection = {} :: Collection;
-			};
+		_SignatureToCollection = {
+			["0"] = {};
 		};
 
 		_On = {
@@ -215,7 +205,7 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 			Signature = String.BOr(Signature, Data.Signature)
 		end
 
-		return GetArchetype(World, Signature).Collection
+		return GetCollection(World, Signature)
 	end
 
 	-- Gets the first entity in a collection of entities that have all of the specified components. Order is not guaranteed.
@@ -265,13 +255,9 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 		local Signature = String.BOr(EntityData.Signature, ComponentData.Signature)
 		EntityData.Signature = Signature
 
-		for ArchetypeSignature, Archetype in World._SignatureToArchetype do
-			if
-				not Archetype.Collection[Entity] and
-				String.BAnd(ArchetypeSignature, Signature) == ArchetypeSignature
-			then
-				Archetype.Collection[Entity] = true
-			end
+		for ArchetypeSignature, Archetype in World._SignatureToCollection do
+			if Archetype.Collection[Entity] or String.BAnd(ArchetypeSignature, Signature) ~= ArchetypeSignature then continue end
+			Archetype.Collection[Entity] = true
 		end
 
 		return Component
@@ -288,18 +274,14 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 
 		local Deleted = ComponentData.Destructor(Entity, Name, ...)
 		if Deleted ~= nil then return Deleted end
-		World._On.Component.Delete(Entity, Name, EntityData.Components[Name])
 
+		World._On.Component.Delete(Entity, Name, EntityData.Components[Name])
 		EntityData.Components[Name] = nil
 		EntityData.Signature = String.BXOr(EntityData.Signature, ComponentData.Signature)
 
-		for ArchetypeSignature, Archetype in World._SignatureToArchetype do
-			if
-				Archetype.Collection[Entity] and
-				String.BAnd(ComponentData.Signature, ArchetypeSignature) == ComponentData.Signature
-			then
-				Archetype.Collection[Entity] = nil
-			end
+		for ArchetypeSignature, Archetype in World._SignatureToCollection do
+			if not Archetype.Collection[Entity] or String.BAnd(ComponentData.Signature, ArchetypeSignature) ~= ComponentData.Signature then continue end
+			Archetype.Collection[Entity] = nil
 		end
 
 		return nil
@@ -329,8 +311,7 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 			Components = {};
 		}
 
-		local UniversalArchetype = GetArchetype(World, "0")
-		UniversalArchetype.Collection[Entity] = true
+		GetCollection(World, "0")[Entity] = true
 
 		World._On.Entity.Create(Entity)
 	end
@@ -347,14 +328,13 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 		local EntityData = World._EntityToData[Entity]
 		if not EntityData then return end
 
+		World._On.Entity.Delete(Entity)
+
 		for Name in EntityData.Components do
 			World.Component.Delete(Entity, Name)
 		end
 
-		local UniversalArchetype = GetArchetype(World, "0")
-		UniversalArchetype.Collection[Entity] = nil
-
-		World._On.Entity.Delete(Entity)
+		GetCollection(World, "0")[Entity] = nil
 	end
 
 	return World
