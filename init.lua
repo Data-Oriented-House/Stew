@@ -321,18 +321,18 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 	World.Entity = {}
 
 	-- Registers an entity internally
-	function World.Entity.Register<A>(Any: A)
-		assert(not World._EntityToData[Any], "Attempting to register entity twice")
+	function World.Entity.Register<E>(Entity: Entity<E>)
+		assert(not World._EntityToData[Entity], "Attempting to register entity twice")
 
-		World._EntityToData[Any] = {
+		World._EntityToData[Entity] = {
 			Signature = "0";
 			Components = {};
 		}
 
 		local UniversalArchetype = GetArchetype(World, "0")
-		UniversalArchetype.Collection[Any] = true
+		UniversalArchetype.Collection[Entity] = true
 
-		World._On.Entity.Create(Any)
+		World._On.Entity.Create(Entity)
 	end
 
 	-- Creates a generic entity, registers it, and returns it
