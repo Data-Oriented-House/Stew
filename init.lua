@@ -1,6 +1,8 @@
 --!strict
 
-local function StringBAnd(String1 : string, String2 : string): string
+local String = {}
+
+function String.BAnd(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -16,7 +18,7 @@ local function StringBAnd(String1 : string, String2 : string): string
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-local function StringBOr(String1 : string, String2 : string): string
+function String.BOr(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -32,7 +34,7 @@ local function StringBOr(String1 : string, String2 : string): string
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-local function StringBXOr(String1 : string, String2 : string): string
+function String.BXOr(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -48,7 +50,7 @@ local function StringBXOr(String1 : string, String2 : string): string
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-local function StringPlace(Place : number): string
+function String.Place(Place : number): string
 	local String = table.create(Place, 0)
 
 	String[Place] = 1
@@ -56,70 +58,107 @@ local function StringPlace(Place : number): string
 	return #String == 0 and "0" or table.concat(String, '')
 end
 
-type Signature = string
-
+export type Signature = string
 export type Name = any
 export type Component = any
 export type Entity<E> = E
 
-export type Collection = { [Entity<any>] : true }
-
-export type Template<E, N, C> = {
-	Constructor : ((Entity : Entity<E>, Name: N, ...any) -> C)?;
-	constructor : ((Entity : Entity<E>, Name: N, ...any) -> C)?;
-
-	Destructor : ((Entity : Entity<E>, Name : N, ...any) -> ())?;
-	destructor : ((Entity : Entity<E>, Name : N, ...any) -> ())?;
+export type Collection = {
+	[Entity<any>] : true;
 }
 
-type Data<E, N, C> = {
-	Signature : Signature;
+export type ComponentArgs<E, N, C> = {
+	Constructor : ((Entity : Entity<E>, Name : N, ...any) -> C)?;
+	Destructor  : ((Entity : Entity<E>, Name : N, ...any) -> ())?;
+}
+
+export type WorldArgs = {
+	OnComponentBuild  : ((Name: Name, ComponentArgs: ComponentArgs<any, any, any>) -> ())?;
+	OnComponentCreate : ((Entity: Entity<any>, Name: Name, ...any) -> ())?;
+	OnComponentDelete : ((Entity: Entity<any>, Name: Name, ...any) -> ())?;
+
+	OnEntityCreate : ((Entity: Entity<any>) -> ())?;
+	OnEntityDelete : ((Entity: Entity<any>) -> ())?;
+}
+
+export type ComponentData<E, N, C> = {
 	Constructor : (Entity : Entity<E>, Name: N, ...any) -> C;
-	Destructor : (Entity : Entity<E>, Name : N, ...any) -> ();
+	Destructor  : (Entity : Entity<E>, Name : N, ...any) -> ();
+	Signature   : Signature;
 }
 
-type Archetype = {
-	Signature : Signature;
+export type EntityData = {
+	Signature  : Signature;
+	Components : { [Name] : Component };
+}
+
+export type Archetype = {
+	Signature  : Signature;
 	Collection : Collection;
+}
+export type World = {
+	_NextPlace : number;
+
+	_NameToData           : { [Name] : ComponentData<any, Name, Component> };
+	_EntityToData         : { [Entity<any>] : EntityData };
+	_SignatureToArchetype : { [Signature] : Archetype };
+
+	_On : {
+		Component : {
+			Build  : <E, N, C>(Name : N, ComponentData : ComponentData<E, N, C>) -> ();
+			Create : <E, N, C>(Entity : Entity<any>, Name : N, Component: C) -> ();
+			Delete : <E, N, D>(Entity : Entity<E>, Name : N, Deleted: D?) -> ();
+		};
+
+		Entity : {
+			Create : <E>(Entity: Entity<E>) -> ();
+			Delete : <E>(Entity: Entity<E>) -> ();
+		};
+	};
+
+	Collection : {
+		Get      : (Names : { Name }) -> Collection;
+		GetFirst : (Names : { Name }) -> Entity<any>;
+	};
+
+	Component : {
+		Build  : <E, N, C>(Name : N, ComponentArgs : ComponentArgs<E, N, C>) -> ();
+		Create : <E, N, C>(Entity : Entity<E>, Name : N, ...any) -> C;
+		Delete : <E, N, D>(Entity : Entity<E>, Name : N) -> D?;
+		Get    : <E, N, C>(Entity : Entity<E>, Name : N) -> C;
+		GetAll : <E, N, C>(Entity : Entity<E>) -> { [N] : C };
+	};
+
+	Entity : {
+		Create : () -> Entity<any>;
+		Delete : <E>(Entity: Entity<E>) -> ();
+	};
 }
 
 local Module = {}
 
-Module._NextPlace = 1
-Module._UniversalSignature = "0"
+local UniversalSignature = "0"
 
-Module._SignatureToArchetype = {} :: { [Signature] : Archetype }
-Module._NameToData = {} :: { [Name] : Data<any, Name, Component> }
-Module._EntityToData = {} :: {
-	[Entity<any>] : {
-		Signature : Signature;
-		Components : { [Name] : Component };
-	}
-}
-
-local function GetArchetype(Signature : Signature): Archetype
-	local FoundArchetype = Module._SignatureToArchetype[Signature]
+local function GetArchetype(World: World, Signature : Signature): Archetype
+	local FoundArchetype = World._SignatureToArchetype[Signature]
 	if FoundArchetype then return FoundArchetype end
 
 	local Archetype: Archetype = {
 		Signature = Signature;
 		Collection = {} :: Collection;
 	}
-	Module._SignatureToArchetype[Signature] = Archetype
+	World._SignatureToArchetype[Signature] = Archetype
 
-	local UniversalArchetype = Module._SignatureToArchetype[Module._UniversalSignature]
+	local UniversalArchetype = World._SignatureToArchetype[UniversalSignature]
 	for Entity in UniversalArchetype.Collection do
-		local EntityData = Module._EntityToData[Entity]
-		if StringBAnd(Archetype.Signature, EntityData.Signature) == Archetype.Signature then
+		local EntityData = World._EntityToData[Entity]
+		if String.BAnd(Archetype.Signature, EntityData.Signature) == Archetype.Signature then
 			Archetype.Collection[Entity] = true
 		end
 	end
 
 	return Archetype
 end
-
---Initialize the Universal collection
-GetArchetype(Module._UniversalSignature)
 
 local function DefaultConstructor() : true
 	return true
@@ -128,145 +167,199 @@ end
 local function DefaultDestructor()
 end
 
--- The Collection namespace, has methods for dealing with collections
-Module.Collection = {}
-
--- Gets the collection of entities that have all of the specified components
-function Module.Collection.Get(Names : { any }) : Collection
-	local Signature = Module._UniversalSignature
-
-	for _, Name in Names do
-		local Data = Module._NameToData[Name]
-		assert(Data, "Attempting to get collection of non-existant " .. tostring(Name) .. " component")
-
-		Signature = StringBOr(Signature, Data.Signature)
-	end
-
-	return GetArchetype(Signature).Collection
+local function DefaultOn()
 end
 
--- Gets the first entity in a collection of entities that have all of the specified components. Order is not guaranteed.
-function Module.Collection.GetFirst(Names : { any }) : Entity<any>?
-	return next(Module.Collection.Get(Names))
-end
+-- The World namespace, has methods for dealing with worlds
+Module.World = {}
 
--- The Component namespace, has methods for dealing with components
-Module.Component = {}
+-- Creates a new world, and for convenience, creates all methods that pass a world as the first argument, too
+function Module.World.Create(WorldArgs: WorldArgs?) : World
+	WorldArgs = (WorldArgs or {}) :: WorldArgs
 
--- Builds a component, this must be called before any components of this type can be created
-function Module.Component.Build<E, N, C>(Name : N, Template : Template<E, N, C>?)
-	assert(not Module._NameToData[Name], "Attempting to build component " .. tostring(Name) .. " twice")
+	local World = {
+		_NextPlace = 1;
+		_NameToData = {};
+		_EntityToData = {};
 
-	local Template = Template or {} :: Template<E, N, C>
+		_SignatureToArchetype = {
+			[UniversalSignature] = {
+				Signature = UniversalSignature;
+				Collection = {} :: Collection;
+			};
+		};
 
-	Module._NameToData[Name] = {
-		Signature = StringPlace(Module._NextPlace);
+		_On = {
+			Component = {
+				Build  = WorldArgs.OnComponentBuild or DefaultOn;
+				Create = WorldArgs.OnComponentCreate or DefaultOn;
+				Delete = WorldArgs.OnComponentDelete or DefaultOn;
+			};
 
-		Constructor = Template.Constructor or Template.constructor or DefaultConstructor;
-		Destructor = Template.Destructor or Template.destructor or DefaultDestructor;
-	}
+			Entity = {
+				Create = WorldArgs.OnEntityCreate or DefaultOn;
+				Delete = WorldArgs.OnEntityDelete or DefaultOn;
+			};
+		};
+	} :: World
 
-	Module._NextPlace += 1
-end
+	-- The Collection namespace, has methods for dealing with collections
+	World.Collection = {}
 
--- Creates a component, associates it with the entity, and returns it
-function Module.Component.Create<E, N>(Entity : Entity<E>, Name : N, ... : any): Component?
-	local ComponentData = Module._NameToData[Name]
-	assert(ComponentData, "Attempting to create instance of non-existant " .. tostring(Name) .. " component")
+	-- Gets the collection of entities that have all of the specified components
+	function World.Collection.Get(Names : { any }) : Collection
+		local Signature = UniversalSignature
 
-	local EntityData = Module._EntityToData[Entity]
-	if not EntityData then
-		Module.Entity.Create(Entity)
-		EntityData = Module._EntityToData[Entity]
-	end
+		for _, Name in Names do
+			local Data = World._NameToData[Name]
+			assert(Data, "Attempting to get collection of non-existant " .. tostring(Name) .. " component")
 
-	if EntityData.Components[Name] then return end
-	local Component = ComponentData.Constructor(Entity, Name, ...)
-	if Component == nil then return end
-	EntityData.Components[Name] = Component
-
-	local Signature = StringBOr(EntityData.Signature, ComponentData.Signature)
-	EntityData.Signature = Signature
-
-	for ArchetypeSignature, Archetype in Module._SignatureToArchetype do
-		if
-			not Archetype.Collection[Entity] and
-			StringBAnd(ArchetypeSignature, Signature) == ArchetypeSignature
-		then
-			Archetype.Collection[Entity] = true
+			Signature = String.BOr(Signature, Data.Signature)
 		end
+
+		return GetArchetype(World, Signature).Collection
 	end
 
-	return EntityData.Components[Name]
-end
+	-- Gets the first entity in a collection of entities that have all of the specified components. Order is not guaranteed.
+	function World.Collection.GetFirst(Names : { any }) : Entity<any>?
+		return next(World.Collection.Get(Names))
+	end
 
--- Deletes and disassociates a component from the entity
-function Module.Component.Delete<E, N>(Entity : Entity<E>, Name : N, ... : any)
-	local ComponentData = Module._NameToData[Name]
-	assert(ComponentData, "Attempting to delete instance of non-existant " .. tostring(Name) .. " component")
+	-- The Component namespace, has methods for dealing with components
+	World.Component = {}
 
-	local EntityData = Module._EntityToData[Entity]
-	if not EntityData then return end
-	if not EntityData.Components[Name] then return end
+	-- Builds a component, this must be called before any components of this type can be created
+	function World.Component.Build<E, N, C>(Name : N, ComponentArgs : ComponentArgs<E, N, C>?)
+		assert(not World._NameToData[Name], "Attempting to build component " .. tostring(Name) .. " twice")
 
-	if ComponentData.Destructor(Entity, Name, ...) ~= nil then return end
-	EntityData.Components[Name] = nil
-	EntityData.Signature = StringBXOr(EntityData.Signature, ComponentData.Signature)
+		ComponentArgs = (ComponentArgs or {}) :: ComponentArgs<E, N, C>
 
-	for ArchetypeSignature, Archetype in Module._SignatureToArchetype do
-		if
-			Archetype.Collection[Entity] and
-			StringBAnd(ComponentData.Signature, ArchetypeSignature) == ComponentData.Signature
-		then
-			Archetype.Collection[Entity] = nil
+		local ComponentData = {
+			Signature = String.Place(World._NextPlace);
+			Constructor = ComponentArgs.Constructor or DefaultConstructor;
+			Destructor = ComponentArgs.Destructor or DefaultDestructor;
+		}
+
+		World._NameToData[Name] = ComponentData
+		World._NextPlace += 1
+
+		World._On.Component.Build(Name, ComponentData)
+	end
+
+	-- Creates a component, associates it with the entity, and returns it. Automatically registers the entity if it hasn't been registered yet
+	function World.Component.Create<E, N>(Entity : Entity<E>, Name : N, ... : any): Component?
+		local ComponentData = World._NameToData[Name]
+		assert(ComponentData, "Attempting to create instance of non-existant " .. tostring(Name) .. " component")
+
+		local EntityData = World._EntityToData[Entity]
+		if not EntityData then
+			World.Entity.Register(Entity)
+			EntityData = World._EntityToData[Entity]
 		end
-	end
-end
 
-local Default = {
-	Components = {},
-}
+		if EntityData.Components[Name] then return end
+		local Component = ComponentData.Constructor(Entity, Name, ...)
+		if Component == nil then return Component end
 
--- Gets a component from an entity
-function Module.Component.Get<E, N>(Entity : Entity<E>, Name : N): Component?
-	local EntityData = (Module._EntityToData[Entity] or Default) :: typeof(Default)
-	return EntityData.Components[Name]
-end
+		EntityData.Components[Name] = Component
+		World._On.Component.Create(Entity, Name, Component)
 
--- Gets all components from an entity
-function Module.Component.GetAll<E>(Entity : Entity<E>): { [Name] : Component }
-	local EntityData = Module._EntityToData[Entity] or Default
-	return EntityData.Components
-end
+		local Signature = String.BOr(EntityData.Signature, ComponentData.Signature)
+		EntityData.Signature = Signature
 
--- The Entity namespace, has methods for dealing with entities
-Module.Entity = {}
+		for ArchetypeSignature, Archetype in World._SignatureToArchetype do
+			if
+				not Archetype.Collection[Entity] and
+				String.BAnd(ArchetypeSignature, Signature) == ArchetypeSignature
+			then
+				Archetype.Collection[Entity] = true
+			end
+		end
 
--- Creates an entity from an existing thing or creates a new one if none is provided
-function Module.Entity.Create<E>(Any: E?) : Entity<E>
-	local Entity: Entity<E> = if Any ~= nil then Any else newproxy()
-	Module._EntityToData[Entity] = {
-		Signature = Module._UniversalSignature;
-		Components = {};
-	}
-
-	local UniversalArchetype = GetArchetype(Module._UniversalSignature)
-	UniversalArchetype.Collection[Entity] = true
-
-	return Entity
-end
-
--- Deletes an entity internally and all of its components
-function Module.Entity.Delete<E>(Entity : Entity<E>)
-	local EntityData = Module._EntityToData[Entity]
-	if not EntityData then return end
-
-	for Name in EntityData.Components do
-		Module.Component.Delete(Entity, Name)
+		return Component
 	end
 
-	local UniversalArchetype = GetArchetype(Module._UniversalSignature)
-	UniversalArchetype.Collection[Entity] = nil
+	-- Deletes and disassociates a component from the entity, returns whatever the destructor returns
+	function World.Component.Delete<E, N, D>(Entity : Entity<E>, Name : N, ... : any): D?
+		local ComponentData = World._NameToData[Name]
+		assert(ComponentData, "Attempting to delete instance of non-existant " .. tostring(Name) .. " component")
+
+		local EntityData = World._EntityToData[Entity]
+		if not EntityData then return end
+		if not EntityData.Components[Name] then return end
+
+		local Deleted = ComponentData.Destructor(Entity, Name, ...)
+		if Deleted ~= nil then return Deleted end
+		World._On.Component.Delete(Entity, Name, EntityData.Components[Name])
+
+		EntityData.Components[Name] = nil
+		EntityData.Signature = String.BXOr(EntityData.Signature, ComponentData.Signature)
+
+		for ArchetypeSignature, Archetype in World._SignatureToArchetype do
+			if
+				Archetype.Collection[Entity] and
+				String.BAnd(ComponentData.Signature, ArchetypeSignature) == ComponentData.Signature
+			then
+				Archetype.Collection[Entity] = nil
+			end
+		end
+
+		return nil
+	end
+
+	-- Gets a component from an entity
+	function World.Component.Get<E, N, C>(Entity : Entity<E>, Name : N): C?
+		local EntityData = (World._EntityToData[Entity] or { Components = {} }) :: typeof({ Components = {} })
+		return EntityData.Components[Name]
+	end
+
+	-- Gets all components from an entity, clones the table to prevent tampering
+	function World.Component.GetAll<E>(Entity : Entity<E>): { [Name] : Component }
+		local EntityData = World._EntityToData[Entity] or { Components = {} }
+		return table.clone(EntityData.Components)
+	end
+
+	-- The Entity namespace, has methods for dealing with entities
+	World.Entity = {}
+
+	-- Registers an entity internally
+	function World.Entity.Register<A>(Any: A)
+		assert(not World._EntityToData[Any], "Attempting to register entity twice")
+
+		World._EntityToData[Any] = {
+			Signature = UniversalSignature;
+			Components = {};
+		}
+
+		local UniversalArchetype = GetArchetype(World, UniversalSignature)
+		UniversalArchetype.Collection[Any] = true
+
+		World._On.Entity.Create(Any)
+	end
+
+	-- Creates a generic entity, registers it, and returns it
+	function World.Entity.Create() : Entity<any>
+		local Entity = newproxy() :: Entity<any>
+		World.Entity.Register(Entity)
+		return Entity
+	end
+
+	-- Deletes an entity and all its components, internally
+	function World.Entity.Delete<E>(Entity : Entity<E>)
+		local EntityData = World._EntityToData[Entity]
+		if not EntityData then return end
+
+		for Name in EntityData.Components do
+			World.Component.Delete(Entity, Name)
+		end
+
+		local UniversalArchetype = GetArchetype(World, UniversalSignature)
+		UniversalArchetype.Collection[Entity] = nil
+
+		World._On.Entity.Delete(Entity)
+	end
+
+	return World
 end
 
 return Module
