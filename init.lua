@@ -255,9 +255,9 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 		local Signature = String.BOr(EntityData.Signature, ComponentData.Signature)
 		EntityData.Signature = Signature
 
-		for ArchetypeSignature, Archetype in World._SignatureToCollection do
-			if Archetype.Collection[Entity] or String.BAnd(ArchetypeSignature, Signature) ~= ArchetypeSignature then continue end
-			Archetype.Collection[Entity] = true
+		for CollectionSignature, Collection in World._SignatureToCollection do
+			if Collection[Entity] or String.BAnd(CollectionSignature, Signature) ~= CollectionSignature then continue end
+			Collection[Entity] = true
 		end
 
 		return Component
@@ -279,9 +279,9 @@ function Module.World.Create(WorldArgs: WorldArgs?) : World
 		EntityData.Components[Name] = nil
 		EntityData.Signature = String.BXOr(EntityData.Signature, ComponentData.Signature)
 
-		for ArchetypeSignature, Archetype in World._SignatureToCollection do
-			if not Archetype.Collection[Entity] or String.BAnd(ComponentData.Signature, ArchetypeSignature) ~= ComponentData.Signature then continue end
-			Archetype.Collection[Entity] = nil
+		for CollectionSignature, Collection in World._SignatureToCollection do
+			if not Collection[Entity] or String.BAnd(ComponentData.Signature, CollectionSignature) ~= ComponentData.Signature then continue end
+			Collection[Entity] = nil
 		end
 
 		return nil
