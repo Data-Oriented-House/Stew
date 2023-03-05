@@ -9,7 +9,7 @@ sidebar_position: 1
 Stew is a minimalistic data-oriented entity-component module. It is designed to be used in conjunction with the Roblox Studio game engine. It was designed to be smaller than competitors, efficient, non-restrictive, and easy to use.
 
 ## Some Notes
-Stew is a very templated piece of software regarding data formats, allowing for things most others won't. This extends Stew's usefulness well beyond ECS, as it easily implements Finite State Machines,
+Stew is a very templated piece of software regarding data formats, allowing for things most others won't. This extends Stew's usefulness well beyond ECS, as can also easily implement things like Finite State Machines. The internals of Stew are volatile and expected to change, potentially rapidly.
 
 ### Style
 Though Stew uses PascalCase, semicolon delimiters, and spaces between colons all around, please feel no pressure to use these conventions in your own code. It also experiments with using tables as namespaces, which does lead to nested tables with the benefit of less duplication and language supported organization. Funnily enough, the nested namespaces begin reading like plain english!

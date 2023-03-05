@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Common Patterns
@@ -70,7 +70,11 @@ Module.Signals = {
 World.Component.Build("MyComponent", {
 	Constructor = function(Entity : Player, Name : string, Arg1 : number, Arg2 : number) : number
 		local Component = Arg1 + Arg2
-		Module.Signals.Created:Fire(Entity, Name, Component)
+
+		task.defer(function()
+			Module.Signals.Created:Fire(Entity, Name, Component)
+		end)
+
 		return Component
 	end;
 
