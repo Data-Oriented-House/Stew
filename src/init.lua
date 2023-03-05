@@ -274,6 +274,10 @@ end
 local function DefaultOn()
 end
 
+local DefaultEntityData = {
+	Components = {};
+}
+
 --[=[
 	@class World
 
@@ -629,8 +633,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		```
 	]=]
 	function World.Component.Get<E, N, C>(Entity : Entity<E>, Name : N): C?
-		local EntityData = (World._EntityToData[Entity] or { Components = {} }) :: typeof({ Components = {} })
-		return EntityData.Components[Name]
+		return ((World._EntityToData[Entity] or DefaultEntityData) :: typeof(DefaultEntityData)).Components[Name]
 	end
 
 	--[=[
@@ -669,8 +672,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		```
 	]=]
 	function World.Component.GetAll<E>(Entity : Entity<E>): { [Name] : Component }
-		local EntityData = World._EntityToData[Entity] or { Components = {} }
-		return table.clone(EntityData.Components)
+		return table.clone((World._EntityToData[Entity] or DefaultEntityData).Components)
 	end
 
 	--[=[
