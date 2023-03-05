@@ -35,7 +35,7 @@ favicon = "/favicon.ico"
 organizationName = "SolarScuffle-Bot"
 projectName = "Stew"
 url = "https://SolarScuffle-Bot.github.io"
-baseUrl = "/Stew"
+baseUrl = "/Stew/"
 tagline = "Luau's minimal Entity-Component module"
 
 [navbar]
