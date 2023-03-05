@@ -414,6 +414,10 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 	]=]
 	World.Component = {} :: WorldComponent
 
+	local EntityComponentMap = {}
+
+	World.Component.EntityComponentMap = EntityComponentMap
+
 	--[=[
 		@within Component
 		@function Build
@@ -520,6 +524,8 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		if Component == nil then return Component end
 
 		EntityData.Components[Name] = Component
+		EntityComponentMap[Entity][Name] = Component
+
 		World._On.Component.Create(Entity, Name, Component)
 
 		local Signature = String.BOr(EntityData.Signature, ComponentData.Signature)
@@ -586,6 +592,8 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 
 		World._On.Component.Delete(Entity, Name, EntityData.Components[Name])
 		EntityData.Components[Name] = nil
+		EntityComponentMap[Entity][Name] = nil
+
 		EntityData.Signature = String.BXOr(EntityData.Signature, ComponentData.Signature)
 
 		for CollectionSignature, Collection in World._SignatureToCollection do
@@ -594,83 +602,6 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		end
 
 		return nil
-	end
-
-	--[=[
-		@within Component
-		@function Get
-
-		@param Entity Entity
-		@param Name Name
-		@return Component?
-
-		Gets a component from an entity.
-
-		```lua
-		local World = Stew.World.Create()
-
-		World.Component.Build("Grid", {
-			Constructor = function(Entity : any, Name : string, Properties: { Dimensions : Vector2; Default : number; })
-				return {
-					Cells = table.create(Properties.Dimensions.X * Properties.Dimensions.Y, Properties.Default);
-				}
-			end;
-		})
-
-		local GridId = 1
-
-		local Grid1 = Stew.Component.Get(GridId, "Grid")
-		print(Grid1) --> nil
-
-		World.Component.Create(GridId, "Grid", Vector2.new(10, 10))
-
-		local Grid2 = Stew.Component.Get(GridId, "Grid")
-		print(Grid2) --> CoolModel
-		```
-	]=]
-	function World.Component.Get<E, N, C>(Entity : Entity<E>, Name : N): C?
-		local EntityData = (World._EntityToData[Entity] or { Components = {} }) :: typeof({ Components = {} })
-		return EntityData.Components[Name]
-	end
-
-	--[=[
-		@within Component
-		@function GetAll
-
-		@param Entity Entity
-		@return { [Name] : Component }
-
-		Returns a table of all an entity's components in the form of a dictionary. This dictionary is cloned to prevent tampering.
-
-		```lua
-		local World = Stew.World.Create()
-
-		World.Component.Build("Red")
-		World.Component.Build("Green")
-		World.Component.Build("Blue", {
-			Constructor = function(Entity : any, Name : string, Value : number)
-				return Value
-			end;
-		})
-
-		local Entity = World.Entity.Create()
-
-		World.Component.Create(Entity, "Red")
-		World.Component.Create(Entity, "Green")
-		World.Component.Create(Entity, "Blue", 5)
-
-		for Name: string, Component: any in Stew.Component.GetAll(Entity) do
-			print(Name, Component) --[[
-				Red true
-				Green true
-				Blue 5
-			]]
-		end
-		```
-	]=]
-	function World.Component.GetAll<E>(Entity : Entity<E>): { [Name] : Component }
-		local EntityData = World._EntityToData[Entity] or { Components = {} }
-		return table.clone(EntityData.Components)
 	end
 
 	--[=[
@@ -708,6 +639,8 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			Signature = "0";
 			Components = {};
 		}
+
+		EntityComponentMap[Entity] = {}
 
 		GetCollection(World, "0")[Entity] = true
 
@@ -775,6 +708,12 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		end
 
 		GetCollection(World, "0")[Entity] = nil
+
+		table.clear(EntityData)
+		World._EntityToData[Entity] = nil
+		
+		table.clear(EntityComponentMap[Entity])
+		EntityComponentMap[Entity] = nil
 	end
 
 	return World
