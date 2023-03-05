@@ -34,7 +34,7 @@ favicon = "/favicon.ico"
 # From git:
 organizationName = "SolarScuffle-Bot"
 projectName = "Stew"
-url = "https://SolarScuffle-Bot.github.io"
+url = "https://solarscuffle-bot.github.io"
 baseUrl = "/Stew/"
 tagline = "Luau's minimal Entity-Component module"
 
