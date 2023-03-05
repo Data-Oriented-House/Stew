@@ -4,7 +4,11 @@ gitRepoUrl = "https://github.com/solarscuffle-bot/stew" # From Git
 gitSourceBranch = "main"
 changelog = true
 classOrder = [
-	"Stew", "World", "Entity", "Component", "Collection"
+	"Stew",
+	"World",
+	"Entity",
+	"Component",
+	"Collection"
 ]
 
 [home]
@@ -35,7 +39,7 @@ favicon = "/favicon.ico"
 organizationName = "SolarScuffle-Bot"
 projectName = "Stew"
 url = "https://solarscuffle-bot.github.io"
-baseUrl = "/Stew/"
+baseUrl = "/Stew"
 tagline = "Luau's minimal Entity-Component module"
 
 [navbar]
