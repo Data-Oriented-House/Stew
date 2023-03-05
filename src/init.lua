@@ -777,6 +777,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		end
 
 		GetCollection(World, "0")[Entity] = nil
+		World._EntityToData[Entity] = nil
 	end
 
 	return World
