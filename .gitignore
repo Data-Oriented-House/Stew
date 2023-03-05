@@ -1,3 +1,4 @@
-selene.toml
-
 node_modules
+build
+
+selene.toml
