@@ -524,7 +524,6 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		if Component == nil then return Component end
 
 		EntityData.Components[Name] = Component
-		World._On.Component.Create(Entity, Name, Component)
 
 		local Signature = String.BOr(EntityData.Signature, ComponentData.Signature)
 		EntityData.Signature = Signature
@@ -533,6 +532,8 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			if Collection[Entity] or String.BAnd(CollectionSignature, Signature) ~= CollectionSignature then continue end
 			Collection[Entity] = true
 		end
+
+		World._On.Component.Create(Entity, Name, Component)
 
 		return Component
 	end
@@ -588,7 +589,6 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		local Deleted = ComponentData.Destructor(Entity, Name, ...)
 		if Deleted ~= nil then return Deleted end
 
-		World._On.Component.Delete(Entity, Name, EntityData.Components[Name])
 		EntityData.Components[Name] = nil
 		EntityData.Signature = String.BXOr(EntityData.Signature, ComponentData.Signature)
 
@@ -596,6 +596,8 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			if not Collection[Entity] or String.BAnd(ComponentData.Signature, CollectionSignature) ~= ComponentData.Signature then continue end
 			Collection[Entity] = nil
 		end
+
+		World._On.Component.Delete(Entity, Name, EntityData.Components[Name])
 
 		return nil
 	end
@@ -770,14 +772,14 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		local EntityData = World._EntityToData[Entity]
 		if not EntityData then return end
 
-		World._On.Entity.Delete(Entity)
-
 		for Name in EntityData.Components do
 			World.Component.Delete(Entity, Name)
 		end
 
 		GetCollection(World, "0")[Entity] = nil
 		World._EntityToData[Entity] = nil
+
+		World._On.Entity.Delete(Entity)
 	end
 
 	return World
