@@ -1,5 +1,7 @@
 --!strict
 
+local UniversalSignature = "0"
+
 local function StringBAnd(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
@@ -13,7 +15,7 @@ local function StringBAnd(String1 : string, String2 : string): string
 		String3[i] = nil
 	end
 
-	return #String3 == 0 and "0" or table.concat(String3, '')
+	return #String3 == 0 and UniversalSignature or table.concat(String3, '')
 end
 
 local function StringBOr(String1 : string, String2 : string): string
@@ -29,7 +31,7 @@ local function StringBOr(String1 : string, String2 : string): string
 		String3[i] = nil
 	end
 
-	return #String3 == 0 and "0" or table.concat(String3, '')
+	return #String3 == 0 and UniversalSignature or table.concat(String3, '')
 end
 
 local function StringBXOr(String1 : string, String2 : string): string
@@ -45,7 +47,7 @@ local function StringBXOr(String1 : string, String2 : string): string
 		String3[i] = nil
 	end
 
-	return #String3 == 0 and "0" or table.concat(String3, '')
+	return #String3 == 0 and UniversalSignature or table.concat(String3, '')
 end
 
 local function StringPlace(Place : number): string
@@ -53,7 +55,7 @@ local function StringPlace(Place : number): string
 
 	String[Place] = 1
 
-	return #String == 0 and "0" or table.concat(String, '')
+	return #String == 0 and UniversalSignature or table.concat(String, '')
 end
 
 --[=[
@@ -251,7 +253,7 @@ local function GetCollection(World: World, Signature : Signature): Collection
 	local Collection = {} :: Collection
 	World._SignatureToCollection[Signature] = Collection
 
-	local UniversalCollection = World._SignatureToCollection["0"]
+	local UniversalCollection = World._SignatureToCollection[UniversalSignature]
 	for Entity in UniversalCollection do
 		local EntityData = World._EntityToData[Entity]
 		if StringBAnd(Signature, EntityData.Signature) == Signature then
@@ -301,7 +303,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		_EntityToData = {};
 
 		_SignatureToCollection = {
-			["0"] = {};
+			[UniversalSignature] = {};
 		};
 
 		_On = {
@@ -361,7 +363,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		```
 	]=]
 	function World.Collection.Get(Names : { Name }) : Collection
-		local Signature = "0"
+		local Signature = UniversalSignature
 
 		for _, Name in Names do
 			local Data = World._NameToData[Name]
@@ -707,11 +709,11 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		assert(not World._EntityToData[Entity], "Attempting to register entity twice")
 
 		World._EntityToData[Entity] = {
-			Signature = "0";
+			Signature = UniversalSignature;
 			Components = {};
 		}
 
-		GetCollection(World, "0")[Entity] = true
+		GetCollection(World, UniversalSignature)[Entity] = true
 
 		World._On.Entity.Create(Entity)
 	end
@@ -774,7 +776,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			World.Component.Delete(Entity, Name)
 		end
 
-		GetCollection(World, "0")[Entity] = nil
+		GetCollection(World, UniversalSignature)[Entity] = nil
 		World._EntityToData[Entity] = nil
 
 		World._On.Entity.Delete(Entity)
