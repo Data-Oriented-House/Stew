@@ -1,13 +1,15 @@
 --!strict
 
-local UniversalSignature = "0"
+local CharZero = '0'
+local AsciiOne = string.byte('1')
+local CharEmpty = ''
 
 local function StringBAnd(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
 	for i in String3 do
-		String3[i] = (string.byte(String1, i) == 49 and string.byte(String2, i) == 49) and 1 or 0
+		String3[i] = (string.byte(String1, i) == AsciiOne and string.byte(String2, i) == AsciiOne) and 1 or 0
 	end
 
 	for i = Length, 1, -1 do
@@ -15,7 +17,7 @@ local function StringBAnd(String1 : string, String2 : string): string
 		String3[i] = nil
 	end
 
-	return #String3 == 0 and UniversalSignature or table.concat(String3, '')
+	return #String3 == 0 and CharZero or table.concat(String3, CharEmpty)
 end
 
 local function StringBOr(String1 : string, String2 : string): string
@@ -23,7 +25,7 @@ local function StringBOr(String1 : string, String2 : string): string
 	local String3 = table.create(Length, 0)
 
 	for i in String3 do
-		String3[i] = (string.byte(String1, i) == 49 or string.byte(String2, i) == 49) and 1 or 0
+		String3[i] = (string.byte(String1, i) == AsciiOne or string.byte(String2, i) == AsciiOne) and 1 or 0
 	end
 
 	for i = Length, 1, -1 do
@@ -31,7 +33,7 @@ local function StringBOr(String1 : string, String2 : string): string
 		String3[i] = nil
 	end
 
-	return #String3 == 0 and UniversalSignature or table.concat(String3, '')
+	return #String3 == 0 and CharZero or table.concat(String3, CharEmpty)
 end
 
 local function StringBXOr(String1 : string, String2 : string): string
@@ -47,7 +49,7 @@ local function StringBXOr(String1 : string, String2 : string): string
 		String3[i] = nil
 	end
 
-	return #String3 == 0 and UniversalSignature or table.concat(String3, '')
+	return #String3 == 0 and CharZero or table.concat(String3, CharEmpty)
 end
 
 local function StringPlace(Place : number): string
@@ -55,7 +57,7 @@ local function StringPlace(Place : number): string
 
 	String[Place] = 1
 
-	return #String == 0 and UniversalSignature or table.concat(String, '')
+	return #String == 0 and CharZero or table.concat(String, CharEmpty)
 end
 
 --[=[
@@ -253,7 +255,7 @@ local function GetCollection(World: World, Signature : Signature): Collection
 	local Collection = {} :: Collection
 	World._SignatureToCollection[Signature] = Collection
 
-	local UniversalCollection = World._SignatureToCollection[UniversalSignature]
+	local UniversalCollection = World._SignatureToCollection[CharZero]
 	for Entity in UniversalCollection do
 		local EntityData = World._EntityToData[Entity]
 		if StringBAnd(Signature, EntityData.Signature) == Signature then
@@ -303,7 +305,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		_EntityToData = {};
 
 		_SignatureToCollection = {
-			[UniversalSignature] = {};
+			[CharZero] = {};
 		};
 
 		_On = {
@@ -363,7 +365,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		```
 	]=]
 	function World.Collection.Get(Names : { Name }) : Collection
-		local Signature = UniversalSignature
+		local Signature = CharZero
 
 		for _, Name in Names do
 			local Data = World._NameToData[Name]
@@ -709,11 +711,11 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		assert(not World._EntityToData[Entity], "Attempting to register entity twice")
 
 		World._EntityToData[Entity] = {
-			Signature = UniversalSignature;
+			Signature = CharZero;
 			Components = {};
 		}
 
-		GetCollection(World, UniversalSignature)[Entity] = true
+		GetCollection(World, CharZero)[Entity] = true
 
 		World._On.Entity.Create(Entity)
 	end
@@ -776,7 +778,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			World.Component.Delete(Entity, Name)
 		end
 
-		GetCollection(World, UniversalSignature)[Entity] = nil
+		GetCollection(World, CharZero)[Entity] = nil
 		World._EntityToData[Entity] = nil
 
 		World._On.Entity.Delete(Entity)
