@@ -1,8 +1,6 @@
 --!strict
 
-local String = {}
-
-function String.BAnd(String1 : string, String2 : string): string
+local function StringBAnd(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -18,7 +16,7 @@ function String.BAnd(String1 : string, String2 : string): string
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-function String.BOr(String1 : string, String2 : string): string
+local function StringBOr(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -34,7 +32,7 @@ function String.BOr(String1 : string, String2 : string): string
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-function String.BXOr(String1 : string, String2 : string): string
+local function StringBXOr(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -50,7 +48,7 @@ function String.BXOr(String1 : string, String2 : string): string
 	return #String3 == 0 and "0" or table.concat(String3, '')
 end
 
-function String.Place(Place : number): string
+local function StringPlace(Place : number): string
 	local String = table.create(Place, 0)
 
 	String[Place] = 1
@@ -256,7 +254,7 @@ local function GetCollection(World: World, Signature : Signature): Collection
 	local UniversalCollection = World._SignatureToCollection["0"]
 	for Entity in UniversalCollection do
 		local EntityData = World._EntityToData[Entity]
-		if String.BAnd(Signature, EntityData.Signature) == Signature then
+		if StringBAnd(Signature, EntityData.Signature) == Signature then
 			Collection[Entity] = true
 		end
 	end
@@ -369,7 +367,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			local Data = World._NameToData[Name]
 			assert(Data, "Attempting to get collection of non-existant " .. tostring(Name) .. " component")
 
-			Signature = String.BOr(Signature, Data.Signature)
+			Signature = StringBOr(Signature, Data.Signature)
 		end
 
 		return GetCollection(World, Signature)
@@ -464,7 +462,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		local ComponentArgs = (ComponentArgs or {}) :: ComponentArgs<E, N, C, D>
 
 		local ComponentData = {
-			Signature = String.Place(World._NextPlace);
+			Signature = StringPlace(World._NextPlace);
 			Constructor = ComponentArgs.Constructor or DefaultConstructor;
 			Destructor = ComponentArgs.Destructor or DefaultDestructor;
 		} :: ComponentData<E, N, C, D>
@@ -525,11 +523,11 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 
 		EntityData.Components[Name] = Component
 
-		local Signature = String.BOr(EntityData.Signature, ComponentData.Signature)
+		local Signature = StringBOr(EntityData.Signature, ComponentData.Signature)
 		EntityData.Signature = Signature
 
 		for CollectionSignature, Collection in World._SignatureToCollection do
-			if Collection[Entity] or String.BAnd(CollectionSignature, Signature) ~= CollectionSignature then continue end
+			if Collection[Entity] or StringBAnd(CollectionSignature, Signature) ~= CollectionSignature then continue end
 			Collection[Entity] = true
 		end
 
@@ -590,10 +588,10 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		if Deleted ~= nil then return Deleted end
 
 		EntityData.Components[Name] = nil
-		EntityData.Signature = String.BXOr(EntityData.Signature, ComponentData.Signature)
+		EntityData.Signature = StringBXOr(EntityData.Signature, ComponentData.Signature)
 
 		for CollectionSignature, Collection in World._SignatureToCollection do
-			if not Collection[Entity] or String.BAnd(ComponentData.Signature, CollectionSignature) ~= ComponentData.Signature then continue end
+			if not Collection[Entity] or StringBAnd(ComponentData.Signature, CollectionSignature) ~= ComponentData.Signature then continue end
 			Collection[Entity] = nil
 		end
 
