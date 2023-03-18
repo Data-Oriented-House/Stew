@@ -4,7 +4,7 @@ local CharEmpty = ''
 local CharZero = '0'
 local AsciiOne = string.byte('1')
 
-local function StringBAnd(String1 : string, String2 : string): string
+local function StringBAnd(String1 : string, String2 : string) : string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -20,7 +20,7 @@ local function StringBAnd(String1 : string, String2 : string): string
 	return #String3 == 0 and CharZero or table.concat(String3, CharEmpty)
 end
 
-local function StringBOr(String1 : string, String2 : string): string
+local function StringBOr(String1 : string, String2 : string) : string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -36,7 +36,7 @@ local function StringBOr(String1 : string, String2 : string): string
 	return #String3 == 0 and CharZero or table.concat(String3, CharEmpty)
 end
 
-local function StringBXOr(String1 : string, String2 : string): string
+local function StringBXOr(String1 : string, String2 : string) : string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
@@ -52,7 +52,7 @@ local function StringBXOr(String1 : string, String2 : string): string
 	return #String3 == 0 and CharZero or table.concat(String3, CharEmpty)
 end
 
-local function StringPlace(Place : number): string
+local function StringPlace(Place : number) : string
 	local String = table.create(Place, 0)
 
 	String[Place] = 1
@@ -248,7 +248,7 @@ export type World = {
 	Entity : WorldEntity;
 }
 
-local function GetCollection(World: World, Signature : Signature): Collection
+local function GetCollection(World: World, Signature : Signature) : Collection
 	local FoundCollection = World._SignatureToCollection[Signature]
 	if FoundCollection then return FoundCollection end
 
@@ -454,7 +454,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			end;
 
 			Destructor = function(Entity : any, Name : string)
-				Stew.Component.Get(Entity, Name):Destroy()
+				Stew.Component.Get(Entity, Name) :Destroy()
 			end;
 		})
 		```
@@ -511,7 +511,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		print(World.Component.Get(LocalPlayer, "Model")) --> CoolModel
 		```
 	]=]
-	function World.Component.Create<E, N, C, T...>(Entity : Entity<E>, Name : N, ...: T...): C?
+	function World.Component.Create<E, N, C, T...>(Entity : Entity<E>, Name : N, ...: T...) : C?
 		local ComponentData = World._NameToData[Name]
 		assert(ComponentData, "Attempting to create instance of non-existant " .. tostring(Name) .. " component")
 
@@ -563,7 +563,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 
 			Destructor = function(Entity : any, Name : string, Allow : boolean)
 				if not Allow then return true end
-				Stew.Component.Get(Entity, Name):Destroy()
+				Stew.Component.Get(Entity, Name) :Destroy()
 			end;
 		})
 
@@ -580,7 +580,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		```
 	]=]
 	-- Deletes and disassociates a component from the entity, returns whatever the destructor returns
-	function World.Component.Delete<E, N, D, T...>(Entity : Entity<E>, Name : N, ... : T...): D?
+	function World.Component.Delete<E, N, D, T...>(Entity : Entity<E>, Name : N, ... : T...) : D?
 		local ComponentData = World._NameToData[Name]
 		assert(ComponentData, "Attempting to delete instance of non-existant " .. tostring(Name) .. " component")
 
@@ -636,7 +636,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		print(Grid2) --> CoolModel
 		```
 	]=]
-	function World.Component.Get<E, N, C>(Entity : Entity<E>, Name : N): C?
+	function World.Component.Get<E, N, C>(Entity : Entity<E>, Name : N) : C?
 		return ((World._EntityToData[Entity] or DefaultEntityData) :: typeof(DefaultEntityData)).Components[Name]
 	end
 
@@ -675,7 +675,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		end
 		```
 	]=]
-	function World.Component.GetAll<E>(Entity : Entity<E>): { [Name] : Component }
+	function World.Component.GetAll<E>(Entity : Entity<E>) : { [Name] : Component }
 		return table.clone((World._EntityToData[Entity] or DefaultEntityData).Components)
 	end
 
