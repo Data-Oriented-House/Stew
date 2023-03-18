@@ -676,7 +676,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		```
 	]=]
 	function World.Component.GetAll<E>(Entity : Entity<E>) : { [Name] : Component }
-		return table.clone((World._EntityToData[Entity] or DefaultEntityData).Components)
+		return (World._EntityToData[Entity] or DefaultEntityData).Components
 	end
 
 	--[=[
