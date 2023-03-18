@@ -6,7 +6,7 @@ local function StringBAnd(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
-	for i in ipairs(String3) do
+	for i in String3 do
 		String3[i] = (string.byte(String1, i) == 49 and string.byte(String2, i) == 49) and 1 or 0
 	end
 
@@ -22,7 +22,7 @@ local function StringBOr(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
-	for i in ipairs(String3) do
+	for i in String3 do
 		String3[i] = (string.byte(String1, i) == 49 or string.byte(String2, i) == 49) and 1 or 0
 	end
 
@@ -38,7 +38,7 @@ local function StringBXOr(String1 : string, String2 : string): string
 	local Length = math.max(#String1, #String2)
 	local String3 = table.create(Length, 0)
 
-	for i in ipairs(String3) do
+	for i in String3 do
 		String3[i] = string.byte(String1, i) == string.byte(String2, i) and 0 or 1
 	end
 
