@@ -45,11 +45,6 @@ tagline = "Luau's minimal Entity-Component module"
 [navbar]
 # hideableSidebar = true
 
-[[navbar.items]]
-href = "https://discord.gg/34wu9VXeyR"
-label = "Discord"
-position = "right"
-
 [footer]
 style = "dark"
 copyright = "Copyright © 2023 SolarScuffle-Bot. Built with Moonwave and Docusaurus"
