@@ -42,16 +42,14 @@ Module.Signals = {
 }
 
 Module.World = Stew.World.Create {
-	On = {
-		Component = {
-			Build = function(Name, ComponentData)
-				Module.Signals.Built:Fire(Name, ComponentData.Signature)
-			end;
+	Component = {
+		Build = function(Name, ComponentData)
+			Module.Signals.Built:Fire(Name, ComponentData.Signature)
+		end;
 
-			Create = function(Entity, Name, Component)
-				Module.Signal.Created:Fire(Entity, Name, Component)
-			end;
-		};
+		Create = function(Entity, Name, Component)
+			Module.Signal.Created:Fire(Entity, Name, Component)
+		end;
 	};
 }
 

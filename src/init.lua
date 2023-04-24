@@ -166,17 +166,15 @@ export type ComponentData<E, N, C, D> = {
 	Optional arguments to build a component with the Component.Build function. Everything is optional, including the On table.
 ]=]
 export type WorldArgs = {
-	On : {
-		Component : {
-			Build  : (<E, N, C, D>(Name : N, ComponentData : ComponentData<E, N, C, D>) -> ())?;
-			Create : (<E, N, C>(Entity : Entity<E>, Name : N, Component: C) -> ())?;
-			Delete : (<E, N, D>(Entity : Entity<E>, Name : N, Deleted: D) -> ())?;
-		}?;
+	Component : {
+		Build  : (<E, N, C, D>(Name : N, ComponentData : ComponentData<E, N, C, D>) -> ())?;
+		Create : (<E, N, C>(Entity : Entity<E>, Name : N, Component: C) -> ())?;
+		Delete : (<E, N, D>(Entity : Entity<E>, Name : N, Deleted: D) -> ())?;
+	}?;
 
-		Entity : {
-			Create : (<E>(Entity: Entity<E>) -> ())?;
-			Delete : (<E>(Entity: Entity<E>) -> ())?;
-		}?;
+	Entity : {
+		Create : (<E>(Entity: Entity<E>) -> ())?;
+		Delete : (<E>(Entity: Entity<E>) -> ())?;
 	}?;
 }
 
@@ -230,17 +228,15 @@ export type World = {
 	_EntityToData          : { [Entity<any>] : EntityData };
 	_SignatureToCollection : { [Signature] : Collection };
 
-	_On : {
-		Component : {
-			Build  : <E, N, C, D>(Name : N, ComponentData : ComponentData<E, N, C, D>) -> ();
-			Create : <E, N, C>(Entity : Entity<any>, Name : N, Component: C) -> ();
-			Delete : <E, N, D>(Entity : Entity<E>, Name : N, Deleted: D) -> ();
-		};
+	_Component : {
+		Build  : <E, N, C, D>(Name : N, ComponentData : ComponentData<E, N, C, D>) -> ();
+		Create : <E, N, C>(Entity : Entity<any>, Name : N, Component: C) -> ();
+		Delete : <E, N, D>(Entity : Entity<E>, Name : N, Deleted: D) -> ();
+	};
 
-		Entity : {
-			Create : <E>(Entity: Entity<E>) -> ();
-			Delete : <E>(Entity: Entity<E>) -> ();
-		};
+	_Entity : {
+		Create : <E>(Entity: Entity<E>) -> ();
+		Delete : <E>(Entity: Entity<E>) -> ();
 	};
 
 	Collection : WorldCollection;
@@ -296,8 +292,8 @@ Stew.World = {}
 	Creates a new world, and for convenience creates all methods that pass a world as the first argument in it, too
 ]=]
 function Stew.World.Create(WorldArgs: WorldArgs?) : World
-	local WorldComponent = if WorldArgs and WorldArgs.On then WorldArgs.On.Component else nil
-	local WorldEntity = if WorldArgs and WorldArgs.On then WorldArgs.On.Entity else nil
+	local WorldComponent = if WorldArgs then WorldArgs.Component else nil
+	local WorldEntity = if WorldArgs then WorldArgs.Entity else nil
 
 	local World = {
 		_NextPlace = 1;
@@ -308,17 +304,15 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			[CharZero] = {};
 		};
 
-		_On = {
-			Component = {
-				Build  = if WorldComponent then WorldComponent.Build  else DefaultOn;
-				Create = if WorldComponent then WorldComponent.Create else DefaultOn;
-				Delete = if WorldComponent then WorldComponent.Delete else DefaultOn;
-			};
+		_Component = {
+			Build  = if WorldComponent then WorldComponent.Build  else DefaultOn;
+			Create = if WorldComponent then WorldComponent.Create else DefaultOn;
+			Delete = if WorldComponent then WorldComponent.Delete else DefaultOn;
+		};
 
-			Entity = {
-				Create = if WorldEntity then WorldEntity.Create else DefaultOn;
-				Delete = if WorldEntity then WorldEntity.Delete else DefaultOn;
-			};
+		_Entity = {
+			Create = if WorldEntity then WorldEntity.Create else DefaultOn;
+			Delete = if WorldEntity then WorldEntity.Delete else DefaultOn;
 		};
 	} :: World
 
@@ -474,7 +468,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		World._NameToData[Name] = ComponentData
 		World._NextPlace += 1
 
-		World._On.Component.Build(Name, ComponentData)
+		World._Component.Build(Name, ComponentData)
 	end
 
 	--[=[
@@ -535,7 +529,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			Collection[Entity] = true
 		end
 
-		World._On.Component.Create(Entity, Name, Component)
+		World._Component.Create(Entity, Name, Component)
 
 		return Component
 	end
@@ -599,7 +593,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 			Collection[Entity] = nil
 		end
 
-		World._On.Component.Delete(Entity, Name, EntityData.Components[Name])
+		World._Component.Delete(Entity, Name, EntityData.Components[Name])
 
 		return nil
 	end
@@ -717,7 +711,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 
 		GetCollection(World, CharZero)[Entity] = true
 
-		World._On.Entity.Create(Entity)
+		World._Entity.Create(Entity)
 	end
 
 	--[=[
@@ -781,7 +775,7 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 		GetCollection(World, CharZero)[Entity] = nil
 		World._EntityToData[Entity] = nil
 
-		World._On.Entity.Delete(Entity)
+		World._Entity.Delete(Entity)
 	end
 
 	return World
