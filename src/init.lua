@@ -157,11 +157,11 @@ export type ComponentData<E, N, C, D> = {
 --[=[
 	@within Stew
 	@interface WorldArgs
-	.On?.Component?.Build ((Name: Name, ComponentData: ComponentData) -> ())?
-	.On?.Component?.Create ((Entity: Entity, Name: Name, Component: Component) -> ())?
-	.On?.Component?.Delete ((Entity: Entity, Name: Name, Deleted: any) -> ())?
-	.On?.Entity?.Create ((Entity: Entity) -> ())?
-	.On?.Entity?.Delete ((Entity: Entity) -> ())?
+	.Component?.Build ((Name: Name, ComponentData: ComponentData) -> ())?
+	.Component?.Create ((Entity: Entity, Name: Name, Component: Component) -> ())?
+	.Component?.Delete ((Entity: Entity, Name: Name, Deleted: any) -> ())?
+	.Entity?.Create ((Entity: Entity) -> ())?
+	.Entity?.Delete ((Entity: Entity) -> ())?
 
 	Optional arguments to build a component with the Component.Build function. Everything is optional, including the On table.
 ]=]
@@ -196,11 +196,11 @@ export type WorldArgs = {
 	._NameToData { [Name]: ComponentData }
 	._EntityToData { [Entity]: EntityData }
 	._SignatureToCollection { [Signature]: Collection }
-	._On.Component.Build (Name : Name, ComponentData : ComponentData) -> ()
-	._On.Component.Create (Entity: Entity, Name: Name, Component: Component) -> ()
-	._On.Component.Delete (Entity: Entity, Name: Name, Deleted: any) -> ()
-	._On.Entity.Create (Entity: Entity) -> ()
-	._On.Entity.Delete (Entity: Entity) -> ()
+	._Component.Build (Name : Name, ComponentData : ComponentData) -> ()
+	._Component.Create (Entity: Entity, Name: Name, Component: Component) -> ()
+	._Component.Delete (Entity: Entity, Name: Name, Deleted: any) -> ()
+	._Entity.Create (Entity: Entity) -> ()
+	._Entity.Delete (Entity: Entity) -> ()
 ]=]
 type WorldCollection = {
 	Get      : (Names : { Name }) -> Collection;
