@@ -134,8 +134,8 @@ export type EntityData = {
 	Optional arguments to build a component with the Component.Build function.
 ]=]
 export type ComponentArgs<E, N, C, D> = {
-	Constructor : (<T...>(Entity : Entity<E>, Name : N, T...) -> C)?;
-	Destructor  : (<T...>(Entity : Entity<E>, Name : N, T...) -> D)?;
+	Constructor : ((Entity : Entity<E>, Name : N, ...any) -> ...any & C)?;
+	Destructor  : ((Entity : Entity<E>, Name : N, ...any) -> ...any & D)?;
 }
 
 --[=[
@@ -461,8 +461,8 @@ function Stew.World.Create(WorldArgs: WorldArgs?) : World
 
 		local ComponentData = {
 			Signature = StringPlace(World._NextPlace);
-			Constructor = ComponentArgs.Constructor or DefaultConstructor;
-			Destructor = ComponentArgs.Destructor or DefaultDestructor;
+			Constructor = (ComponentArgs.Constructor or DefaultConstructor) :: any;
+			Destructor = (ComponentArgs.Destructor or DefaultDestructor) :: any;
 		} :: ComponentData<E, N, C, D>
 
 		World._NameToData[Name] = ComponentData
