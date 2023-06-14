@@ -1,5 +1,5 @@
 title = "Stew"  # From Git
-gitRepoUrl = "https://github.com/solarscuffle-bot/stew" # From Git
+gitRepoUrl = "https://github.com/data-oriented-house/stew" # From Git
 
 gitSourceBranch = "main"
 changelog = true
@@ -38,7 +38,7 @@ favicon = "/favicon.ico"
 # From git:
 organizationName = "SolarScuffle-Bot"
 projectName = "Stew"
-url = "https://solarscuffle-bot.github.io"
+url = "https://data-oriented-house.github.io"
 baseUrl = "/Stew/"
 tagline = "Luau's minimal Entity-Component module"
 
