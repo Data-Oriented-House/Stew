@@ -1,6 +1,6 @@
 [package]
-name = "solarscuffle-bot/stew"
-version = "2.2.0"
+name = "data-oriented-house/stew"
+version = "2.2.1"
 registry = "https://github.com/UpliftGames/wally-index"
 licence = "MIT"
 authors = ["Sona"]
