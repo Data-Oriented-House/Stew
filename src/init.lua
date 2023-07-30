@@ -83,11 +83,11 @@ export type EntityData = {
 	signature: Signature,
 	components: Components,
 }
-export type Create = (factory: Factory, entity: Entity, ...any) -> Component?
-export type Delete = (factory: Factory, entity: Entity, component: Component, ...any) -> any?
+export type Add = (factory: Factory, entity: Entity, ...any) -> Component?
+export type Remove = (factory: Factory, entity: Entity, component: Component, ...any) -> any?
 export type ComponentData = {
-	create: Create,
-	delete: Delete,
+	create: Add,
+	delete: Remove,
 	signature: Signature,
 	factory: Factory,
 }
@@ -147,13 +147,15 @@ function Stew.world()
 		built = signal.new(),
 		spawned = signal.new(),
 		killed = signal.new(),
+		added = signal.new(),
+		removed = signal.new(),
 	}
 
 	function world.factory(
 		name: Name,
 		componentArgs: {
-			create: Create?,
-			delete: Delete?,
+			add: Add?,
+			remove: Remove?,
 		}?
 	)
 		assert(not world._nameToData[name], 'Attempting to build component ' .. tostring(name) .. ' twice')
@@ -167,8 +169,8 @@ function Stew.world()
 		local componentData = {
 			factory = factory,
 			signature = splace(world._nextPlace),
-			create = (componentArgs and componentArgs.create or create) :: Create,
-			delete = (componentArgs and componentArgs.delete or delete) :: Delete,
+			create = (componentArgs and componentArgs.add or create) :: Add,
+			delete = (componentArgs and componentArgs.remove or delete) :: Remove,
 		}
 
 		function factory.add(entity: Entity, ...: any): Component?
@@ -184,7 +186,7 @@ function Stew.world()
 
 			local component = componentData.create(factory, entity, ...)
 			if component == nil then
-				return component
+				return nil
 			end
 
 			entityData.components[name] = component
@@ -200,6 +202,7 @@ function Stew.world()
 			end
 
 			factory.added:Fire(entity, component)
+			world.added:Fire(entity, factory, component)
 
 			return component
 		end
@@ -233,7 +236,8 @@ function Stew.world()
 				collection[entity] = nil
 			end
 
-			factory.removed:Fire(entity, name, deleted)
+			factory.removed:Fire(entity, component, deleted)
+			world.removed:Fire(entity, factory, component, deleted)
 
 			return nil
 		end
