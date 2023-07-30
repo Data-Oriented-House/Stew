@@ -1,7 +1,6 @@
 --!strict
 
-local ReplicatedStorage = game:GetService 'ReplicatedStorage'
-local signal = require(ReplicatedStorage.Packages.Signal)
+local signal = require(script.fastsignal)
 
 local charEmpty = ''
 local charZero = '0'
