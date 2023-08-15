@@ -202,7 +202,7 @@ function Stew.world()
 			end
 
 			factory.added:Fire(entity, component)
-			world.added:Fire(entity, factory, component)
+			world.added:Fire(factory, entity, component)
 
 			return component
 		end
@@ -237,7 +237,7 @@ function Stew.world()
 			end
 
 			factory.removed:Fire(entity, component, deleted)
-			world.removed:Fire(entity, factory, component, deleted)
+			world.removed:Fire(factory, entity, component, deleted)
 
 			return nil
 		end
@@ -262,7 +262,7 @@ function Stew.world()
 			return
 		end
 
-		for name in pairs(entityData.components) do
+		for name in entityData.components do
 			local factory = world._nameToData[name].factory
 			factory.remove(entity, ...)
 		end
