@@ -1,7 +1,5 @@
 --!strict
 
-local signal = require(script.fastsignal)
-
 local charEmpty = ''
 local charZero = '0'
 local asciiOne = string.byte '1'
@@ -120,6 +118,14 @@ local function delete()
 	return
 end
 
+local function built(name: any, componentData: ComponentData) end
+local function spawned(entity: any) end
+local function killed(entity: any) end
+local function worldadded(factory: any, entity: any, component: any) end
+local function worldremoved(factory: any, entity: any, component: any, deleted: any) end
+local function factoryadded(entity: any, component: any) end
+local function factoryremoved(entity: any, component: any, deleted: any) end
+
 local function register(world: World, entity: Entity)
 	assert(not world._entityToData[entity], 'Attempting to register entity twice')
 
@@ -132,7 +138,9 @@ local function register(world: World, entity: Entity)
 
 	getCollection(world, charZero)[entity] = entityData.components
 
-	world.spawned:Fire(entity)
+	if world.spawned then
+		world.spawned(entity)
+	end
 end
 
 function Stew.world()
@@ -144,11 +152,11 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = signal.new(),
-		spawned = signal.new(),
-		killed = signal.new(),
-		added = signal.new(),
-		removed = signal.new(),
+		built = built,
+		spawned = spawned,
+		killed = killed,
+		added = worldadded,
+		removed = worldremoved,
 	}
 
 	function world.factory(
@@ -162,8 +170,8 @@ function Stew.world()
 
 		local factory = {
 			name = name,
-			added = signal.new(),
-			removed = signal.new(),
+			added = factoryadded,
+			removed = factoryremoved,
 		}
 
 		local componentData = {
@@ -201,8 +209,13 @@ function Stew.world()
 				collection[entity] = entityData.components
 			end
 
-			factory.added:Fire(entity, component)
-			world.added:Fire(factory, entity, component)
+			if factory.added then
+				factory.added(entity, component)
+			end
+
+			if world.added then
+				world.added(factory, entity, component)
+			end
 
 			return component
 		end
@@ -236,8 +249,13 @@ function Stew.world()
 				collection[entity] = nil
 			end
 
-			factory.removed:Fire(entity, component, deleted)
-			world.removed:Fire(factory, entity, component, deleted)
+			if factory.removed then
+				factory.removed(entity, component, deleted)
+			end
+
+			if world.removed then
+				world.removed(factory, entity, component, deleted)
+			end
 
 			return nil
 		end
@@ -245,7 +263,9 @@ function Stew.world()
 		world._nameToData[name] = componentData
 		world._nextPlace += 1
 
-		world.built:Fire(name, componentData)
+		if world.built then
+			world.built(name, componentData)
+		end
 
 		return factory
 	end
@@ -270,7 +290,9 @@ function Stew.world()
 		getCollection(world, charZero)[entity] = nil
 		world._entityToData[entity] = nil
 
-		world.killed:Fire(entity)
+		if world.killed then
+			world.killed(entity)
+		end
 	end
 
 	function world.get(entity: Entity): Components
