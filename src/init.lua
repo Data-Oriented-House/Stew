@@ -81,30 +81,18 @@ export type EntityData = {
 	signature: Signature,
 	components: Components,
 }
-export type Add = (factory: Factory, entity: Entity, ...any) -> Component?
-export type Remove = (factory: Factory, entity: Entity, component: Component, ...any) -> any?
-export type ComponentData = {
-	create: Add,
-	delete: Remove,
+export type Add<N> = (factory: Factory<N>, entity: Entity, ...any) -> Component?
+export type Remove<N> = (factory: Factory<N>, entity: Entity, component: Component, ...any) -> any?
+export type ComponentData<N> = {
+	create: Add<N>,
+	delete: Remove<N>,
 	signature: Signature,
-	factory: Factory,
+	factory: Factory<N>,
 }
-export type World = {
-	factory: (name: Name, componentArgs: { add: Add?, remove: Remove? }?) -> Factory,
-	built: (name: Name, componentData: ComponentData) -> (),
-	spawned: (entity: Entity) -> (),
-	killed: (entity: Entity) -> (),
-	added: (factory: Factory, entity: Entity, component: Component) -> (),
-	removed: (factory: Factory, entity: Entity, component: Component, deleted: any) -> (),
-	_signatureToCollection: { [Signature]: Collection },
-	_entityToData: { [Entity]: EntityData },
-	_nameToData: { [Name]: ComponentData },
-	_nextPlace: number,
-}
-export type Factory = {
-	name: Name,
-	add: (factory: Factory, entity: Entity, ...any) -> Component?,
-	remove: (factory: Factory, entity: Entity, component: Component, ...any) -> any?,
+export type Factory<N> = {
+	name: N,
+	add: (factory: Factory<N>, entity: Entity, ...any) -> Component?,
+	remove: (factory: Factory<N>, entity: Entity, component: Component, ...any) -> any?,
 	added: (entity: Entity, component: Component) -> (),
 	removed: (entity: Entity, component: Component, deleted: any) -> (),
 }
@@ -137,13 +125,13 @@ local function delete()
 	return
 end
 
-local function built(name: any, componentData: ComponentData) end
-local function spawned(entity: any) end
-local function killed(entity: any) end
-local function worldadded(factory: any, entity: any, component: any) end
-local function worldremoved(factory: any, entity: any, component: any, deleted: any) end
-local function factoryadded(entity: any, component: any) end
-local function factoryremoved(entity: any, component: any, deleted: any) end
+local function built<N>(name: N, componentData: ComponentData<N>) end
+local function spawned(entity: Entity) end
+local function killed(entity: Entity) end
+local function worldadded<N>(factory: Factory<N>, entity: Entity, component: Component) end
+local function worldremoved<N>(factory: Factory<N>, entity: Entity, component: Component, deleted: any) end
+local function factoryadded(entity: Entity, component: Component) end
+local function factoryremoved(entity: Entity, component: Component, deleted: any) end
 
 local function register(world: World, entity: Entity)
 	assert(not world._entityToData[entity], 'Attempting to register entity twice')
@@ -178,11 +166,11 @@ function Stew.world()
 		removed = worldremoved,
 	}
 
-	function world.factory(
-		name: Name,
+	function world.factory<N>(
+		name: N,
 		componentArgs: {
-			add: Add?,
-			remove: Remove?,
+			add: Add<N>?,
+			remove: Remove<N>?,
 		}?
 	)
 		assert(not world._nameToData[name], 'Attempting to build component ' .. tostring(name) .. ' twice')
@@ -196,8 +184,8 @@ function Stew.world()
 		local componentData = {
 			factory = factory,
 			signature = splace(world._nextPlace),
-			create = (componentArgs and componentArgs.add or create) :: Add,
-			delete = (componentArgs and componentArgs.remove or delete) :: Remove,
+			create = (componentArgs and componentArgs.add or create) :: Add<N>,
+			delete = (componentArgs and componentArgs.remove or delete) :: Remove<N>,
 		}
 
 		function factory.add(entity: Entity, ...: any): Component?
@@ -279,7 +267,7 @@ function Stew.world()
 			return nil
 		end
 
-		world._nameToData[name] = componentData
+		world._nameToData[name :: Name] = componentData
 		world._nextPlace += 1
 
 		if world.built then
@@ -319,7 +307,7 @@ function Stew.world()
 		return if data then data.components else empty
 	end
 
-	function world.query(factories: { Factory }): Collection
+	function world.query(factories: { Factory<Name> }): Collection
 		local signature = charZero
 
 		for _, factory in factories do
@@ -332,5 +320,10 @@ function Stew.world()
 
 	return world
 end
+
+export type World = typeof(Stew.world(...))
+
+local W = Stew.world()
+local F = W.factory('Moving')
 
 return Stew
