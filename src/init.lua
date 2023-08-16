@@ -320,28 +320,4 @@ end
 
 export type World = typeof(Stew.world(...))
 
-local W = Stew.world()
-
-local Module = {}
-
-function Module.add(factory, entity: Model, args: { color: number? })
-	return args.color or 5
-end
-
-function Module.remove(factory, entity: Model, component: number)
-	return nil
-end
-
-local F = W.factory('F', {
-	add = function(factory, entity: Model, args: { color: number? }): number?
-		if math.random() < 0.5 then
-			return nil
-		end
-
-		return args.color or 5
-	end,
-})
-
-local C = F.add()
-
 return Stew
