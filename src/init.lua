@@ -81,18 +81,18 @@ export type EntityData = {
 	signature: Signature,
 	components: Components,
 }
-export type Add<N, E, C> = (factory: Factory<N, E, C>, entity: E, ...any) -> C
-export type Remove<N, E, C> = (factory: Factory<N, E, C>, entity: E, component: C, ...any) -> any?
-export type ComponentData<N, E, C> = {
-	create: Add<N, E, C>,
-	delete: Remove<N, E, C>,
+export type Add<N, E, C, A..., R...> = (factory: Factory<N, E, C, A..., R...>, entity: E, A...) -> C
+export type Remove<N, E, C, A..., R...> = (factory: Factory<N, E, C, A..., R...>, entity: E, component: C, R...) -> any?
+export type ComponentData<N, E, C, A..., R...> = {
+	create: Add<N, E, C, A..., R...>,
+	delete: Remove<N, E, C, A..., R...>,
 	signature: Signature,
-	factory: Factory<N, E, C>,
+	factory: Factory<N, E, C, A..., R...>,
 }
-export type Factory<N, E, C> = {
+export type Factory<N, E, C, A..., R...> = {
 	name: N,
-	add: (entity: E, ...any) -> C?,
-	remove: (entity: E, component: C, ...any) -> any?,
+	add: (entity: E, A...) -> C?,
+	remove: (entity: E, component: C, R...) -> any?,
 	added: (entity: E, component: C) -> (),
 	removed: (entity: E, component: C, deleted: any) -> (),
 }
@@ -121,9 +121,13 @@ local function nop()
 	return
 end
 
-local function create()
-	return true
-end
+local tag = {
+	add = function(factory, entity: Entity)
+		return true
+	end,
+
+	remove = nop,
+}
 
 local function register<E>(world: World, entity: E)
 	assert(not world._entityToData[entity], 'Attempting to register entity twice')
@@ -149,23 +153,27 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = nop :: (componentData: ComponentData<Name, Entity, Component>) -> (),
+		built = nop :: (componentData: ComponentData<Name, Entity, Component, ...any, ...any>) -> (),
 		spawned = nop :: (entity: Entity) -> (),
 		killed = nop :: (entity: Entity) -> (),
-		added = nop :: (factory: Factory<Name, Entity, Component>, entity: Entity, component: Component) -> (),
+		added = nop :: (
+			factory: Factory<Name, Entity, Component, ...any, ...any>,
+			entity: Entity,
+			component: Component
+		) -> (),
 		removed = nop :: (
-			factory: Factory<Name, Entity, Component>,
+			factory: Factory<Name, Entity, Component, ...any, ...any>,
 			entity: Entity,
 			component: Component,
 			deleted: any
 		) -> (),
 	}
 
-	function world.factory<N, E, C>(
+	function world.factory<N, E, C, A..., R...>(
 		name: N,
 		componentArgs: {
-			add: Add<N, E, C>,
-			remove: Remove<N, E, C>?,
+			add: Add<N, E, C, A..., R...>,
+			remove: Remove<N, E, C, A..., R...>?,
 		}
 	)
 		assert(not world._nameToData[name], 'Attempting to build component ' .. tostring(name) .. ' twice')
@@ -174,16 +182,16 @@ function Stew.world()
 			name = name,
 			added = nop,
 			removed = nop,
-		} :: Factory<N, E, C>
+		} :: Factory<N, E, C, A..., R...>
 
 		local componentData = {
 			factory = factory,
 			signature = splace(world._nextPlace),
 			create = componentArgs.add,
-			delete = componentArgs.remove or nop,
+			delete = componentArgs.remove or nop :: Remove<N, E, C, A..., R...>,
 		}
 
-		function factory.add(entity: E, ...: any): C?
+		function factory.add(entity: E, ...: A...): C?
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				register(world, entity)
@@ -217,7 +225,7 @@ function Stew.world()
 			return component
 		end
 
-		function factory.remove(entity: E, ...: any): any?
+		function factory.remove(entity: E, ...: R...): any?
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				return
@@ -261,14 +269,7 @@ function Stew.world()
 	end
 
 	function world.tag<N>(name: N)
-		return world.factory(name, {
-			add = function(factory, entity: Entity)
-				return true
-			end,
-			remove = function(factory, entity: Entity, component: boolean)
-				return nil
-			end,
-		})
+		return world.factory(name, tag)
 	end
 
 	function world.entity(): Entity
@@ -299,7 +300,7 @@ function Stew.world()
 		return if data then data.components else empty
 	end
 
-	function world.query(factories: { Factory<Name, Entity, Component> }): Collection
+	function world.query(factories: { Factory<Name, Entity, Component, ...any, ...any> }): Collection
 		local signature = charZero
 
 		for _, factory in factories do
