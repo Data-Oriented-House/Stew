@@ -81,20 +81,20 @@ export type EntityData = {
 	signature: Signature,
 	components: Components,
 }
-export type Add<N, E> = (factory: Factory<N, E>, entity: E, ...any) -> Component?
-export type Remove<N, E> = (factory: Factory<N, E>, entity: E, component: Component, ...any) -> any?
-export type ComponentData<N, E> = {
-	create: Add<N, E>,
-	delete: Remove<N, E>,
+export type Add<N, E, C> = (factory: Factory<N, E, C>, entity: E, ...any) -> C
+export type Remove<N, E, C> = (factory: Factory<N, E, C>, entity: E, component: C, ...any) -> any?
+export type ComponentData<N, E, C> = {
+	create: Add<N, E, C>,
+	delete: Remove<N, E, C>,
 	signature: Signature,
-	factory: Factory<N, E>,
+	factory: Factory<N, E, C>,
 }
-export type Factory<N, E> = {
+export type Factory<N, E, C> = {
 	name: N,
-	add: (entity: E, ...any) -> Component?,
-	remove: (entity: E, component: Component, ...any) -> any?,
-	added: (entity: E, component: Component) -> (),
-	removed: (entity: E, component: Component, deleted: any) -> (),
+	add: (entity: E, ...any) -> C?,
+	remove: (entity: E, component: C, ...any) -> any?,
+	added: (entity: E, component: C) -> (),
+	removed: (entity: E, component: C, deleted: any) -> (),
 }
 
 local function getCollection(world: World, signature: Signature): Collection
@@ -149,19 +149,24 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = nop :: (componentData: ComponentData<Name, Entity>) -> (),
+		built = nop :: (componentData: ComponentData<Name, Entity, Component>) -> (),
 		spawned = nop :: (entity: Entity) -> (),
 		killed = nop :: (entity: Entity) -> (),
-		added = nop :: (factory: Factory<Name, Entity>, entity: Entity, component: Component) -> (),
-		removed = nop :: (factory: Factory<Name, Entity>, entity: Entity, component: Component, deleted: any) -> (),
+		added = nop :: (factory: Factory<Name, Entity, Component>, entity: Entity, component: Component) -> (),
+		removed = nop :: (
+			factory: Factory<Name, Entity, Component>,
+			entity: Entity,
+			component: Component,
+			deleted: any
+		) -> (),
 	}
 
-	function world.factory<N, E>(
+	function world.factory<N, E, C>(
 		name: N,
 		componentArgs: {
-			add: Add<N, E>?,
-			remove: Remove<N, E>?,
-		}?
+			add: Add<N, E, C>,
+			remove: Remove<N, E, C>?,
+		}
 	)
 		assert(not world._nameToData[name], 'Attempting to build component ' .. tostring(name) .. ' twice')
 
@@ -169,16 +174,16 @@ function Stew.world()
 			name = name,
 			added = nop,
 			removed = nop,
-		} :: Factory<N, E>
+		} :: Factory<N, E, C>
 
 		local componentData = {
 			factory = factory,
 			signature = splace(world._nextPlace),
-			create = (componentArgs and componentArgs.add or create) :: Add<N, E>,
-			delete = (componentArgs and componentArgs.remove or nop) :: Remove<N, E>,
+			create = componentArgs.add,
+			delete = componentArgs.remove or nop,
 		}
 
-		function factory.add(entity: E, ...: any): Component?
+		function factory.add(entity: E, ...: any): C?
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				register(world, entity)
@@ -186,7 +191,7 @@ function Stew.world()
 			end
 
 			if entityData.components[name] then
-				return nil
+				return entityData.components[name]
 			end
 
 			local component = componentData.create(factory, entity, ...)
@@ -255,6 +260,17 @@ function Stew.world()
 		return factory
 	end
 
+	function world.tag<N>(name: N)
+		return world.factory(name, {
+			add = function(factory, entity: Entity)
+				return true
+			end,
+			remove = function(factory, entity: Entity, component: boolean)
+				return nil
+			end,
+		})
+	end
+
 	function world.entity(): Entity
 		local entity = newproxy() :: Entity
 		register(world, entity)
@@ -283,11 +299,14 @@ function Stew.world()
 		return if data then data.components else empty
 	end
 
-	function world.query(factories: { Factory<Name, Entity> }): Collection
+	function world.query(factories: { Factory<Name, Entity, Component> }): Collection
 		local signature = charZero
 
 		for _, factory in factories do
-			assert(typeof(factory) == 'table' and factory.name, 'Invalid factory in query, did you accidentally use the component name instead?')
+			assert(
+				typeof(factory) == 'table' and factory.name,
+				'Invalid factory in query, did you accidentally use the component name instead?'
+			)
 			local data = world._nameToData[factory.name]
 			signature = sor(signature, data.signature)
 		end
@@ -299,8 +318,5 @@ function Stew.world()
 end
 
 export type World = typeof(Stew.world(...))
-
-local W = Stew.world()
-local F = W.factory('Moving')
 
 return Stew
