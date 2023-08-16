@@ -81,20 +81,20 @@ export type EntityData = {
 	signature: Signature,
 	components: Components,
 }
-export type Add<N> = (factory: Factory<N>, entity: Entity, ...any) -> Component?
-export type Remove<N> = (factory: Factory<N>, entity: Entity, component: Component, ...any) -> any?
-export type ComponentData<N> = {
-	create: Add<N>,
-	delete: Remove<N>,
+export type Add<N, E> = (factory: Factory<N, E>, entity: E, ...any) -> Component?
+export type Remove<N, E> = (factory: Factory<N, E>, entity: E, component: Component, ...any) -> any?
+export type ComponentData<N, E> = {
+	create: Add<N, E>,
+	delete: Remove<N, E>,
 	signature: Signature,
-	factory: Factory<N>,
+	factory: Factory<N, E>,
 }
-export type Factory<N> = {
+export type Factory<N, E> = {
 	name: N,
-	add: (factory: Factory<N>, entity: Entity, ...any) -> Component?,
-	remove: (factory: Factory<N>, entity: Entity, component: Component, ...any) -> any?,
-	added: (entity: Entity, component: Component) -> (),
-	removed: (entity: Entity, component: Component, deleted: any) -> (),
+	add: (entity: E, ...any) -> Component?,
+	remove: (entity: E, component: Component, ...any) -> any?,
+	added: (entity: E, component: Component) -> (),
+	removed: (entity: E, component: Component, deleted: any) -> (),
 }
 
 local function getCollection(world: World, signature: Signature): Collection
@@ -117,23 +117,15 @@ local function getCollection(world: World, signature: Signature): Collection
 	return collection
 end
 
+local function nop()
+	return
+end
+
 local function create()
 	return true
 end
 
-local function delete()
-	return
-end
-
-local function built<N>(name: N, componentData: ComponentData<N>) end
-local function spawned(entity: Entity) end
-local function killed(entity: Entity) end
-local function worldadded<N>(factory: Factory<N>, entity: Entity, component: Component) end
-local function worldremoved<N>(factory: Factory<N>, entity: Entity, component: Component, deleted: any) end
-local function factoryadded(entity: Entity, component: Component) end
-local function factoryremoved(entity: Entity, component: Component, deleted: any) end
-
-local function register(world: World, entity: Entity)
+local function register<E>(world: World, entity: E)
 	assert(not world._entityToData[entity], 'Attempting to register entity twice')
 
 	local entityData = {
@@ -145,9 +137,7 @@ local function register(world: World, entity: Entity)
 
 	getCollection(world, charZero)[entity] = entityData.components
 
-	if world.spawned then
-		world.spawned(entity)
-	end
+	world.spawned(entity)
 end
 
 function Stew.world()
@@ -159,36 +149,36 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = built,
-		spawned = spawned,
-		killed = killed,
-		added = worldadded,
-		removed = worldremoved,
+		built = nop :: (componentData: ComponentData<Name, Entity>) -> (),
+		spawned = nop :: (entity: Entity) -> (),
+		killed = nop :: (entity: Entity) -> (),
+		added = nop :: (factory: Factory<Name, Entity>, entity: Entity, component: Component) -> (),
+		removed = nop :: (factory: Factory<Name, Entity>, entity: Entity, component: Component, deleted: any) -> (),
 	}
 
-	function world.factory<N>(
+	function world.factory<N, E>(
 		name: N,
 		componentArgs: {
-			add: Add<N>?,
-			remove: Remove<N>?,
+			add: Add<N, E>?,
+			remove: Remove<N, E>?,
 		}?
 	)
 		assert(not world._nameToData[name], 'Attempting to build component ' .. tostring(name) .. ' twice')
 
 		local factory = {
 			name = name,
-			added = factoryadded,
-			removed = factoryremoved,
-		}
+			added = nop,
+			removed = nop,
+		} :: Factory<N, E>
 
 		local componentData = {
 			factory = factory,
 			signature = splace(world._nextPlace),
-			create = (componentArgs and componentArgs.add or create) :: Add<N>,
-			delete = (componentArgs and componentArgs.remove or delete) :: Remove<N>,
+			create = (componentArgs and componentArgs.add or create) :: Add<N, E>,
+			delete = (componentArgs and componentArgs.remove or nop) :: Remove<N, E>,
 		}
 
-		function factory.add(entity: Entity, ...: any): Component?
+		function factory.add(entity: E, ...: any): Component?
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				register(world, entity)
@@ -216,18 +206,13 @@ function Stew.world()
 				collection[entity] = entityData.components
 			end
 
-			if factory.added then
-				factory.added(entity, component)
-			end
-
-			if world.added then
-				world.added(factory, entity, component)
-			end
+			factory.added(entity, component)
+			world.added(factory, entity, component)
 
 			return component
 		end
 
-		function factory.remove(entity: Entity, ...: any): any?
+		function factory.remove(entity: E, ...: any): any?
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				return
@@ -256,13 +241,8 @@ function Stew.world()
 				collection[entity] = nil
 			end
 
-			if factory.removed then
-				factory.removed(entity, component, deleted)
-			end
-
-			if world.removed then
-				world.removed(factory, entity, component, deleted)
-			end
+			factory.removed(entity, component, deleted)
+			world.removed(factory, entity, component, deleted)
 
 			return nil
 		end
@@ -270,9 +250,7 @@ function Stew.world()
 		world._nameToData[name :: Name] = componentData
 		world._nextPlace += 1
 
-		if world.built then
-			world.built(name, componentData)
-		end
+		world.built(componentData)
 
 		return factory
 	end
@@ -297,9 +275,7 @@ function Stew.world()
 		getCollection(world, charZero)[entity] = nil
 		world._entityToData[entity] = nil
 
-		if world.killed then
-			world.killed(entity)
-		end
+		world.killed(entity)
 	end
 
 	function world.get(entity: Entity): Components
@@ -307,10 +283,11 @@ function Stew.world()
 		return if data then data.components else empty
 	end
 
-	function world.query(factories: { Factory<Name> }): Collection
+	function world.query(factories: { Factory<Name, Entity> }): Collection
 		local signature = charZero
 
 		for _, factory in factories do
+			assert(typeof(factory) == 'table' and factory.name, 'Invalid factory in query, did you accidentally use the component name instead?')
 			local data = world._nameToData[factory.name]
 			signature = sor(signature, data.signature)
 		end
