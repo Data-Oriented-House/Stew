@@ -236,10 +236,7 @@ function Stew.world()
 				return
 			end
 
-			local deleted = componentData.delete(factory, entity, component, ...)
-			if deleted ~= nil then
-				return deleted
-			end
+			componentData.delete(factory, entity, component, ...)
 
 			entityData.components[name] = nil
 			entityData.signature = sxor(entityData.signature, componentData.signature)
@@ -254,8 +251,8 @@ function Stew.world()
 				collection[entity] = nil
 			end
 
-			factory.removed(entity, component, deleted)
-			world.removed(factory, entity, component, deleted)
+			factory.removed(entity, component)
+			world.removed(factory, entity, component)
 
 			return nil
 		end
