@@ -82,7 +82,7 @@ export type EntityData = {
 	components: Components,
 }
 export type Add<N, E, C, A..., R...> = (factory: Factory<N, E, C, A..., R...>, entity: E, A...) -> C
-export type Remove<N, E, C, A..., R...> = (factory: Factory<N, E, C, A..., R...>, entity: E, component: C, R...) -> any?
+export type Remove<N, E, C, A..., R...> = (factory: Factory<N, E, C, A..., R...>, entity: E, component: C, R...) -> ()
 export type ComponentData<N, E, C, A..., R...> = {
 	create: Add<N, E, C, A..., R...>,
 	delete: Remove<N, E, C, A..., R...>,
@@ -91,10 +91,10 @@ export type ComponentData<N, E, C, A..., R...> = {
 }
 export type Factory<N, E, C, A..., R...> = {
 	name: N,
-	add: (entity: E, A...) -> C?,
-	remove: (entity: E, component: C, R...) -> any?,
+	add: (entity: E, A...) -> C,
+	remove: (entity: E, component: C, R...) -> (),
 	added: (entity: E, component: C) -> (),
-	removed: (entity: E, component: C, deleted: any) -> (),
+	removed: (entity: E, component: C) -> (),
 }
 
 local function getCollection(world: World, signature: Signature): Collection
@@ -191,7 +191,7 @@ function Stew.world()
 			delete = componentArgs.remove or nop :: Remove<N, E, C, A..., R...>,
 		}
 
-		function factory.add(entity: E, ...: A...): C?
+		function factory.add(entity: E, ...: A...): C
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				register(world, entity)
@@ -204,7 +204,7 @@ function Stew.world()
 
 			local component = componentData.create(factory, entity, ...)
 			if component == nil then
-				return nil
+				return (nil :: any) :: C
 			end
 
 			entityData.components[name] = component
@@ -319,5 +319,29 @@ function Stew.world()
 end
 
 export type World = typeof(Stew.world(...))
+
+local W = Stew.world()
+
+local Module = {}
+
+function Module.add(factory, entity: Model, args: { color: number? })
+	return args.color or 5
+end
+
+function Module.remove(factory, entity: Model, component: number)
+	return nil
+end
+
+local F = W.factory('F', {
+	add = function(factory, entity: Model, args: { color: number? }): number?
+		if math.random() < 0.5 then
+			return nil
+		end
+
+		return args.color or 5
+	end,
+})
+
+local C = F.add()
 
 return Stew
