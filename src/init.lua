@@ -89,6 +89,25 @@ export type ComponentData = {
 	signature: Signature,
 	factory: Factory,
 }
+export type World = {
+	factory: (name: Name, componentArgs: { add: Add?, remove: Remove? }?) -> Factory,
+	built: (name: Name, componentData: ComponentData) -> (),
+	spawned: (entity: Entity) -> (),
+	killed: (entity: Entity) -> (),
+	added: (factory: Factory, entity: Entity, component: Component) -> (),
+	removed: (factory: Factory, entity: Entity, component: Component, deleted: any) -> (),
+	_signatureToCollection: { [Signature]: Collection },
+	_entityToData: { [Entity]: EntityData },
+	_nameToData: { [Name]: ComponentData },
+	_nextPlace: number,
+}
+export type Factory = {
+	name: Name,
+	add: (factory: Factory, entity: Entity, ...any) -> Component?,
+	remove: (factory: Factory, entity: Entity, component: Component, ...any) -> any?,
+	added: (entity: Entity, component: Component) -> (),
+	removed: (entity: Entity, component: Component, deleted: any) -> (),
+}
 
 local function getCollection(world: World, signature: Signature): Collection
 	local found = world._signatureToCollection[signature]
@@ -313,8 +332,5 @@ function Stew.world()
 
 	return world
 end
-
-export type World = typeof(Stew.world(...))
-export type Factory = typeof(Stew.world(...).factory(...))
 
 return Stew
