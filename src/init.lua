@@ -90,7 +90,6 @@ export type ComponentData<N, E, C, A..., R...> = {
 	factory: Factory<N, E, C, A..., R...>,
 }
 export type Factory<N, E, C, A..., R...> = {
-	name: N,
 	add: (entity: E, A...) -> C,
 	remove: (entity: E, component: C, R...) -> (),
 	added: (entity: E, component: C) -> (),
@@ -147,7 +146,7 @@ end
 function Stew.world()
 	local world = {
 		_nextPlace = 1,
-		_nameToData = {},
+		_factoryToData = {},
 		_entityToData = {},
 		_signatureToCollection = {
 			[charZero] = {},
@@ -170,16 +169,12 @@ function Stew.world()
 	}
 
 	function world.factory<N, E, C, A..., R...>(
-		name: N,
 		componentArgs: {
 			add: Add<N, E, C, A..., R...>,
 			remove: Remove<N, E, C, A..., R...>?,
 		}
 	)
-		assert(not world._nameToData[name], 'Attempting to build component ' .. tostring(name) .. ' twice')
-
 		local factory = {
-			name = name,
 			added = nop,
 			removed = nop,
 		} :: Factory<N, E, C, A..., R...>
@@ -198,8 +193,8 @@ function Stew.world()
 				entityData = world._entityToData[entity]
 			end
 
-			if entityData.components[name] then
-				return entityData.components[name]
+			if entityData.components[factory] then
+				return entityData.components[factory]
 			end
 
 			local component = componentData.create(factory, entity, ...)
@@ -207,7 +202,7 @@ function Stew.world()
 				return (nil :: any) :: C
 			end
 
-			entityData.components[name] = component
+			entityData.components[factory] = component
 
 			local signature = sor(entityData.signature, componentData.signature)
 			entityData.signature = signature
@@ -231,14 +226,14 @@ function Stew.world()
 				return
 			end
 
-			local component = entityData.components[name]
+			local component = entityData.components[factory]
 			if not component then
 				return
 			end
 
 			componentData.delete(factory, entity, component, ...)
 
-			entityData.components[name] = nil
+			entityData.components[factory] = nil
 			entityData.signature = sxor(entityData.signature, componentData.signature)
 
 			for collectionSignature, collection in world._signatureToCollection do
@@ -257,7 +252,7 @@ function Stew.world()
 			return nil
 		end
 
-		world._nameToData[name :: Name] = componentData
+		world._factoryToData[factory] = componentData
 		world._nextPlace += 1
 
 		world.built(componentData)
@@ -265,8 +260,8 @@ function Stew.world()
 		return factory
 	end
 
-	function world.tag<N>(name: N)
-		return world.factory(name, tag)
+	function world.tag()
+		return world.factory(tag)
 	end
 
 	function world.entity(): Entity
@@ -281,8 +276,7 @@ function Stew.world()
 			return
 		end
 
-		for name in entityData.components do
-			local factory = world._nameToData[name].factory
+		for factory in entityData.components do
 			factory.remove(entity, ...)
 		end
 
@@ -301,11 +295,7 @@ function Stew.world()
 		local signature = charZero
 
 		for _, factory in factories do
-			assert(
-				typeof(factory) == 'table' and factory.name,
-				'Invalid factory in query, did you accidentally use the component name instead?'
-			)
-			local data = world._nameToData[factory.name]
+			local data = world._factoryToData[factory]
 			signature = sor(signature, data.signature)
 		end
 
