@@ -70,10 +70,9 @@ end
 local Stew = {}
 
 export type Signature = string
-export type Name = any
 export type Component = any
 export type Entity = any
-export type Components = { [Name]: Component }
+export type Components = { [Factory<Entity, Component, ...any, ...any>]: Component }
 export type Collection = {
 	[Entity]: Components,
 }
