@@ -81,15 +81,15 @@ export type EntityData = {
 	signature: Signature,
 	components: Components,
 }
-export type Add<N, E, C, A..., R...> = (factory: Factory<N, E, C, A..., R...>, entity: E, A...) -> C
-export type Remove<N, E, C, A..., R...> = (factory: Factory<N, E, C, A..., R...>, entity: E, component: C, R...) -> ()
-export type ComponentData<N, E, C, A..., R...> = {
-	create: Add<N, E, C, A..., R...>,
-	delete: Remove<N, E, C, A..., R...>,
+export type Add<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, A...) -> C
+export type Remove<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, component: C, R...) -> ()
+export type ComponentData<E, C, A..., R...> = {
+	create: Add<E, C, A..., R...>,
+	delete: Remove<E, C, A..., R...>,
 	signature: Signature,
-	factory: Factory<N, E, C, A..., R...>,
+	factory: Factory<E, C, A..., R...>,
 }
-export type Factory<N, E, C, A..., R...> = {
+export type Factory<E, C, A..., R...> = {
 	add: (entity: E, A...) -> C,
 	remove: (entity: E, component: C, R...) -> (),
 	added: (entity: E, component: C) -> (),
@@ -152,38 +152,38 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = nop :: (componentData: ComponentData<Name, Entity, Component, ...any, ...any>) -> (),
+		built = nop :: (componentData: ComponentData<Entity, Component, ...any, ...any>) -> (),
 		spawned = nop :: (entity: Entity) -> (),
 		killed = nop :: (entity: Entity) -> (),
 		added = nop :: (
-			factory: Factory<Name, Entity, Component, ...any, ...any>,
+			factory: Factory<Entity, Component, ...any, ...any>,
 			entity: Entity,
 			component: Component
 		) -> (),
 		removed = nop :: (
-			factory: Factory<Name, Entity, Component, ...any, ...any>,
+			factory: Factory<Entity, Component, ...any, ...any>,
 			entity: Entity,
 			component: Component,
 			deleted: any
 		) -> (),
 	}
 
-	function world.factory<N, E, C, A..., R...>(
+	function world.factory<E, C, A..., R...>(
 		componentArgs: {
-			add: Add<N, E, C, A..., R...>,
-			remove: Remove<N, E, C, A..., R...>?,
+			add: Add<E, C, A..., R...>,
+			remove: Remove<E, C, A..., R...>?,
 		}
 	)
 		local factory = {
 			added = nop,
 			removed = nop,
-		} :: Factory<N, E, C, A..., R...>
+		} :: Factory<E, C, A..., R...>
 
 		local componentData = {
 			factory = factory,
 			signature = splace(world._nextPlace),
 			create = componentArgs.add,
-			delete = componentArgs.remove or nop :: Remove<N, E, C, A..., R...>,
+			delete = componentArgs.remove or nop :: Remove<E, C, A..., R...>,
 		}
 
 		function factory.add(entity: E, ...: A...): C
@@ -291,7 +291,7 @@ function Stew.world()
 		return if data then data.components else empty
 	end
 
-	function world.query(factories: { Factory<Name, Entity, Component, ...any, ...any> }): Collection
+	function world.query(factories: { Factory<Entity, Component, ...any, ...any> }): Collection
 		local signature = charZero
 
 		for _, factory in factories do
