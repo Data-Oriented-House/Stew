@@ -72,13 +72,13 @@ local Stew = {}
 export type Signature = string
 export type Component = any
 export type Entity = any
-export type Components = { [Factory<Entity, Component, ...any, ...any>]: Component }
+export type Components<C> = { [Factory<Entity, C, ...any, ...any>]: C }
 export type Collection = {
-	[Entity]: Components,
+	[Entity]: Components<any>,
 }
 export type EntityData = {
 	signature: Signature,
-	components: Components,
+	components: Components<any>,
 }
 export type Add<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, A...) -> C
 export type Remove<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, component: C, R...) -> ()
