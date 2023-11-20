@@ -285,7 +285,7 @@ function Stew.world()
 		world.killed(entity)
 	end
 
-	function world.get(entity: Entity): Components
+	function world.get(entity: Entity): Components<any>
 		local data = world._entityToData[entity]
 		return if data then data.components else empty
 	end
