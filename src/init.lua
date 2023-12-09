@@ -90,7 +90,7 @@ export type ComponentData<E, C, A..., R...> = {
 }
 export type Factory<E, C, A..., R...> = {
 	add: (entity: E, A...) -> C,
-	remove: (entity: E, component: C, R...) -> (),
+	remove: (entity: E, R...) -> (),
 	added: (entity: E, component: C) -> (),
 	removed: (entity: E, component: C) -> (),
 }
