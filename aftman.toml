@@ -4,4 +4,5 @@
 # To add a new tool, add an entry to this table.
 [tools]
 wally = "UpliftGames/wally@0.3.1"
-# rojo = "rojo-rbx/rojo@6.2.0"
+wally-package-types = "JohnnyMorganz/wally-package-types@1.2.1"
+stylua = "JohnnyMorganz/stylua@0.19.1"
