@@ -6,7 +6,7 @@ To install Stew:
 
 ## Manually
 
-Just copy the source code from [src/init.lua](src/init.lua) and call it a day.
+Just copy the source code from [src/init.lua](../src/init.lua) and call it a day.
 
 ## Wally Package Manager
 
