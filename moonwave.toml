@@ -34,7 +34,7 @@ onBrokenMarkdownLinks = "warn"
 favicon = "/favicon.ico"
 
 # From git:
-organizationName = "SolarScuffle-Bot"
+organizationName = "Data-Oriented-House"
 projectName = "Stew"
 url = "https://data-oriented-house.github.io"
 baseUrl = "/Stew/"
