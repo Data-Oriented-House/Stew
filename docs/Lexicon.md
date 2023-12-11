@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 With ECS and other Data Oriented patterns / techniques, an extensive vocabulary is born. As time continues this will be fleshed out and extended upon.
