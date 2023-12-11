@@ -155,6 +155,44 @@ RunService.Heartbeat:Connect(Schedules.heartbeat.start)
 
 And now we clearly see System1 and System4 depend on System2, and System3 depends on System1. This will force us to think about our systems and how they interact with each other, and force us to not design cyclical systems.
 
+## Reactive Components
+Sometimes we really want to know when components *change*. We get these benefits from ValueBase instances like NumberValues, ObjectValues, or the OSS variants like Observables. Anything can be a component in Stew, *there's nothing stopping you from using these as components.* Let's use the [TableValue](https://data-oriented-house.github.io/TableValue/) library to implement reactive tables with a similar api to ValueBase instances.
+
+```lua
+local World = require(path.to.World)
+local TableValue = require(path.to.TableValue)
+
+local MovementBoost = World.factory {
+	add = function(factory, entity: Humanoid, speedMultiplier: number, jumpMultiplier: number)
+		local self = {
+			old = {
+				WalkSpeed = entity.WalkSpeed,
+				JumpPower = entity.JumpPower,
+			},
+			multipliers = TableValue.new {},
+		}
+
+		-- Very fun stuff! This will update our humanoid whenever we add a field
+		function self.multipliers.Changed(property: string, value: number)
+			entity[property] = value * self.old[property]
+		end
+
+		-- Add the fields (one by one so they can be automatically updated (exciting!))
+		self.multipliers.WalkSpeed = speedMultiplier
+		self.multipliers.JumpPower = jumpMultiplier
+
+		return self
+	end,
+
+	remove = function(factory, entity: Humanoid, self)
+		entity.WalkSpeed = self.old.Walkspeed
+		entity.JumpPower = self.old.JumpPower
+	end,
+}
+
+return MovementBoost
+```
+
 ## Instances As Entities
 There are many cases you'll want to use an Instance as an Entity, such as the Player, Character, monster model, etc. Stew allows this, but does not clean up components if the instance is destroyed (the instance still exists anyways!). To implement this, we can take advantage of the world `spawned` callback.
 
