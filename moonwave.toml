@@ -1,5 +1,5 @@
-title = "RBXStew"  # From Git
-gitRepoUrl = "https://github.com/data-oriented-house/RBXStew" # From Git
+title = "Stew"  # From Git
+gitRepoUrl = "https://github.com/data-oriented-house/Stew" # From Git
 
 gitSourceBranch = "main"
 changelog = true
@@ -20,12 +20,12 @@ image = "/Handshake.png"
 
 [[home.features]]
 title = "Component-Based Architecture"
-description = "RBXStew enables you to create modular, reusable components that can be accessed through entity intersections. Entities can be anything, easily integrating with pre-existing data layouts such as the Roblox data-model."
+description = "Stew enables you to create modular, reusable components that can be accessed through entity intersections. Entities can be anything, easily integrating with pre-existing data layouts such as the Roblox data-model."
 image = "/SoupWhiteBlack.png"
 
 [[home.features]]
 title = "Minimalist"
-description = "RBXStew does not try to be everything to everyone. It leverages the flexibility of lua callbacks to provide full control over the behavior of Stew's core features without the complex configuration, enforced patterns and dependencies, or overhead found elsewhere. \"It just works.\""
+description = "Stew does not try to be everything to everyone. It leverages the flexibility of lua callbacks to provide full control over the behavior of Stew's core features without the complex configuration, enforced patterns and dependencies, or overhead found elsewhere. \"It just works.\""
 image = "/Scaffolding.png"
 
 [docusaurus]
@@ -35,9 +35,9 @@ favicon = "/favicon.ico"
 
 # From git:
 organizationName = "SolarScuffle-Bot"
-projectName = "RBXStew"
+projectName = "Stew"
 url = "https://data-oriented-house.github.io"
-baseUrl = "/RBXStew/"
+baseUrl = "/Stew/"
 tagline = "Luau's minimal Entity-Component module"
 
 [navbar]
