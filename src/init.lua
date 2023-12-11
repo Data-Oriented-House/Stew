@@ -67,6 +67,9 @@ local function splace(place: number): string
 	return #String == 0 and charZero or table.concat(String, charEmpty)
 end
 
+--[=[
+	@class Stew
+]=]
 local Stew = {}
 
 export type Signature = string
@@ -82,7 +85,7 @@ export type EntityData = {
 }
 export type Add<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, A...) -> C
 export type Remove<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, component: C, R...) -> ()
-export type ComponentData<E, C, A..., R...> = {
+export type Archetype<E, C, A..., R...> = {
 	create: Add<E, C, A..., R...>,
 	delete: Remove<E, C, A..., R...>,
 	signature: Signature,
@@ -142,7 +145,60 @@ local function register<E>(world: World, entity: E)
 	world.spawned(entity)
 end
 
+--[=[
+	@within World
+	@interface Archetype
+	.factory Factory<E, C, A..., R...>,
+	.create (factory, entity: E, A...) -> C,
+	.delete (factory, entity: E, component: C, R...) -> ()
+	.signature string,
+]=]
+
+--[=[
+	@within Stew
+	@interface World
+	. added (factory: Factory, entity: any, component: any)
+	. removed (factory: Factory, entity: any, component: any)
+	. spawned (entity: any) -> ()
+	. killed (entity: any) -> ()
+	. built (archetype: Archetype) -> ()
+]=]
+
+--[=[
+	@within Stew
+	@return World
+
+	Creates a new world.
+
+	```lua
+	-- Your very own world to toy with
+	local myWorld = Stew.world()
+
+	-- If you'd like to listen for certain events, you can define these callbacks:
+
+	-- Called whenever a new factory is built
+	function myWorld.built(archetype: Archetype) end
+
+	-- Called whenever a new entity is registered
+	function myWorld.spawned(entity) end
+
+	-- Called whenever an entity is unregistered
+	function myWorld.killed(entity) end
+
+	-- Called whenever an entity recieves a component
+	function myWorld.added(factory, entity, component) end
+
+	-- Called whenever an entity loses a component
+	function myWorld.removed(factory, entity, component) end
+	```
+]=]
 function Stew.world()
+	--[=[
+		@class World
+		Worlds are containers for everything in your ECS. They hold all the state and factories you define later. They are very much, an isolated tiny world.
+
+		"Oh what a wonderful world!" - Louis Armstrong
+	]=]
 	local world = {
 		_nextPlace = 1,
 		_factoryToData = {},
@@ -151,7 +207,7 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = nop :: (componentData: ComponentData<Entity, Component, ...any, ...any>) -> (),
+		built = nop :: (archetype: Archetype<Entity, Component, ...any, ...any>) -> (),
 		spawned = nop :: (entity: Entity) -> (),
 		killed = nop :: (entity: Entity) -> (),
 		added = nop :: (
@@ -162,29 +218,99 @@ function Stew.world()
 		removed = nop :: (
 			factory: Factory<Entity, Component, ...any, ...any>,
 			entity: Entity,
-			component: Component,
-			deleted: any
+			component: Component
 		) -> (),
 	}
 
-	function world.factory<E, C, A..., R...>(
-		componentArgs: {
-			add: Add<E, C, A..., R...>,
-			remove: Remove<E, C, A..., R...>?,
+	--[=[
+		@within World
+		@interface FactoryArgs
+		.add (factory: Factory, entity: E, A...) -> C
+		.remove (factory: Factory, entity: E, component: C, R...) -> ()?
+	]=]
+
+	--[=[
+		@within World
+		@param factoryArgs FactoryArgs
+		@return Factory
+
+		Creates a new factory from an `add` constructor and optional `remove` destructor.
+
+		```lua
+		local world = Stew.world()
+
+		local position = world.factory {
+			add = function(factory, entity: any, x: number, y: number, z: number)
+				return Vector3.new(x, y, z)
+			end,
 		}
-	)
+
+		local body = world.factory {
+			add = function(factory, entity: Instance, model: Model)
+				model.Parent = entity
+				return model
+			end,
+			remove = function(factory, entity: Instance, component: Model)
+				component:Destroy()
+			end,
+		}
+
+		-- If you'd like to listen for interesting events to happen, define these callbacks:
+
+		-- Called when an entity recieves this factory's component
+		function body.added(entity: Instance, component: Model) end
+
+		-- Called when an entity loses this factory's component
+		function body.removed(entity: Instance, component: Model) end
+		```
+	]=]
+	function world.factory<E, C, A..., R...>(factoryArgs: {
+		add: Add<E, C, A..., R...>,
+		remove: Remove<E, C, A..., R...>?,
+	})
+		--[=[
+			@class Factory
+
+			Factories are little objects responsible for adding and removing their specific type of component from entities. They are also used to access their type of component from entities and queries. They are well, component factories!
+		]=]
 		local factory = {
 			added = nop,
 			removed = nop,
 		} :: Factory<E, C, A..., R...>
 
-		local componentData = {
+		local archetype = {
 			factory = factory,
 			signature = splace(world._nextPlace),
-			create = componentArgs.add,
-			delete = componentArgs.remove or nop :: Remove<E, C, A..., R...>,
+			create = factoryArgs.add,
+			delete = factoryArgs.remove or nop :: Remove<E, C, A..., R...>,
 		}
 
+		--[=[
+			@within Factory
+			@param entity any
+			@param ... any
+			@return Component
+
+			Adds the factory's type of component to the entity. If the component already exists, it just returns the old component and does not perform any further changes.
+
+			Anything can be an Entity, if an unregistered object is given a component it is registered as an entity.
+
+			Fires the world and factory `added` callbacks.
+
+			```lua
+			local World = require(path.to.world)
+			local Move = require(path.to.move.factory)
+			local Chase = require(path.to.chase.factory)
+			local Model = require(path.to.model.factory)
+
+			local enemy = World.entity()
+			Model.add(enemy)
+			Move.add(enemy)
+			Chase.add(enemy)
+
+			-- continues to below example
+			```
+		]=]
 		function factory.add(entity: E, ...: A...): C
 			local entityData = world._entityToData[entity]
 			if not entityData then
@@ -196,14 +322,14 @@ function Stew.world()
 				return entityData.components[factory]
 			end
 
-			local component = componentData.create(factory, entity, ...)
+			local component = archetype.create(factory, entity, ...)
 			if component == nil then
 				return (nil :: any) :: C
 			end
 
 			entityData.components[factory] = component
 
-			local signature = sor(entityData.signature, componentData.signature)
+			local signature = sor(entityData.signature, archetype.signature)
 			entityData.signature = signature
 
 			for collectionSignature, collection in world._signatureToCollection do
@@ -219,6 +345,25 @@ function Stew.world()
 			return component
 		end
 
+		--[=[
+			@within Factory
+			@param entity any
+			@param ... any
+			@return void?
+
+			Removes the factory's type of component from the entity. If the entity is unregistered, nothing happens.
+
+			Fires the world and factory `removed` callbacks.
+
+			```lua
+			-- continued from above example
+
+			task.wait(5)
+
+			Chase.remove(entity)
+			Move.remove(entity)
+			```
+		]=]
 		function factory.remove(entity: E, ...: R...): any?
 			local entityData = world._entityToData[entity]
 			if not entityData then
@@ -230,16 +375,13 @@ function Stew.world()
 				return
 			end
 
-			componentData.delete(factory, entity, component, ...)
+			archetype.delete(factory, entity, component, ...)
 
 			entityData.components[factory] = nil
-			entityData.signature = sxor(entityData.signature, componentData.signature)
+			entityData.signature = sxor(entityData.signature, archetype.signature)
 
 			for collectionSignature, collection in world._signatureToCollection do
-				if
-					not collection[entity]
-					or sand(componentData.signature, collectionSignature) ~= componentData.signature
-				then
+				if not collection[entity] or sand(archetype.signature, collectionSignature) ~= archetype.signature then
 					continue
 				end
 				collection[entity] = nil
@@ -251,24 +393,79 @@ function Stew.world()
 			return nil
 		end
 
-		world._factoryToData[factory] = componentData
+		world._factoryToData[factory] = archetype
 		world._nextPlace += 1
 
-		world.built(componentData)
+		world.built(archetype)
 
 		return factory
 	end
 
+	--[=[
+		@within World
+		@return Factory
+
+		Syntax sugar for defining a factory that adds a `true` component. It is used to mark the *existence* of the component, like a tag does.
+
+		```lua
+		local world = Stew.world()
+
+		local sad = world.tag()
+		local happy = world.tag()
+		local sleeping = world.tag()
+		local poisoned = world.tag()
+
+		local allHappyPoisonedSleepers = world.query { happy, poisoned, sleeping }
+		```
+	]=]
 	function world.tag()
 		return world.factory(tag)
 	end
 
+	--[=[
+		@within World
+
+		Creates an arbitrary entity and registers it. Keep in mind, in Stew, *anything* can be an Entity (except nil). If you don't have a pre-existing object to use as an entity, this will create a unique identifier you can use.
+
+		Cannot be sent over remotes. (If this is a feature you believe would be beneficial, make an issue in the repository for it!)
+
+		Fires the world `spawned` callback.
+
+		```lua
+		local World = require(path.to.world)
+		local Move = require(path.to.move.factory)
+		local Chase = require(path.to.chase.factory)
+		local Model = require(path.to.model.factory)
+
+		local enemy = World.entity()
+		Model.add(enemy)
+		Move.add(enemy)
+		Chase.add(enemy)
+
+		-- continues to below example
+		```
+	]=]
 	function world.entity(): Entity
 		local entity = newproxy() :: Entity
 		register(world, entity)
 		return entity
 	end
 
+	--[=[
+		@within World
+
+		Removes all components from an entity and unregisters it.
+
+		Fires the world `killed` callback.
+
+		```lua
+		-- continued from above example
+
+		task.wait(5)
+
+		World.kill(enemy)
+		```
+	]=]
 	function world.kill(entity: Entity, ...: any)
 		local entityData = world._entityToData[entity]
 		if not entityData then
@@ -285,11 +482,103 @@ function Stew.world()
 		world.killed(entity)
 	end
 
+	--[=[
+		@within World
+		@type Components { [Factory]: Component }
+	]=]
+
+	--[=[
+		@within World
+		@tag Do Not Modify
+		@return Components
+
+		Gets all components of an entity in a neat table you can iterate over.
+
+		This is a reference to the internal representation, so mutating this table directly will cause Stew to be out-of-sync.
+
+		```lua
+		local World = require(path.to.world)
+		local Move = require(path.to.move.factory)
+		local Chase = require(path.to.chase.factory)
+		local Model = require(path.to.model.factory)
+
+		local enemy = World.entity()
+
+		Model.add(enemy)
+
+		local components = world.get(enemy)
+
+		for factory, component in components do
+			print(factory, component)
+		end
+		-- Model, Model
+
+		Move.add(enemy)
+
+		for factory, component in components do
+			print(factory, component)
+		end
+		-- Model, Model
+		-- Move, BodyMover
+
+		Chase.add(enemy)
+
+		for factory, component in components do
+			print(factory, component)
+		end
+		-- Model, Model
+		-- Move, BodyMover
+		-- Chase, TargetInstance
+
+		print(world.get(entity)[Chase]) -- TargetInstance
+		```
+	]=]
 	function world.get(entity: Entity): Components<any>
 		local data = world._entityToData[entity]
 		return if data then data.components else empty
 	end
 
+	--[=[
+		@within World
+		@tag Do Not Modify
+		@param factories { Factory }
+		@return { [Entity]: Components }
+
+		Gets a set of all entities that have at least the queried components. (This is the magic sauce of it all!)
+
+		This is a reference to the internal representation, so mutating this table directly will cause Stew to be out-of-sync.
+
+		```lua
+		local World = require(path.to.world)
+		local Poisoned = require(path.to.poisoned.factory)
+		local Health = require(path.to.health.factory)
+		local Color = require(path.to.color.factory)
+
+		local poisonedHealths = world.query { Poisoned, Health }
+
+		-- This is a very cool system
+		RunService.Heartbeat:Connect(function(deltaTime)
+			for entity, components in poisonedHealths do
+				local health = components[Health]
+				local poison = components[Poison]
+				health.current -= deltaTime * poison
+
+				if health.current < 0 then
+					World.kill(entity)
+				end
+			end
+		end)
+
+		-- This is another very cool system
+		RunService.RenderStepped:Connect(function(deltaTime)
+			for entity, components in world.query { Poisoned, Color } do
+				local color = components[Color]
+				color.hue += deltaTime * (120 - color.hue)
+				color.saturation += deltaTime * (1 - color.saturation)
+			end
+		end)
+		```
+	]=]
 	function world.query(factories: { Factory<Entity, Component, ...any, ...any> }): Collection
 		local signature = charZero
 
