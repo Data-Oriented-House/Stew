@@ -443,7 +443,7 @@ Cons:
 
 To fix the scalability issue, we can centralize everything into a "Replication" system. This centralized system will be responsible for all replication. Since this is centralized, we will inevitably start coupling other factories to this system to map the factories to names and from names to factories again. We can use this to our advantage though, and maintain our *selective* capabilities like before. Only certain factories will replicate.
 
-We now face another issue, how do we know when to replicate? We want to replicate when a component changes, meaning we need to keep track of that somehow. To comply with this, we can no longer use any data type we want, and must use tables to support indirections.
+We now face another issue, how do we know when to replicate? We want to replicate when a component changes, meaning we need to keep track of that somehow. A reactive table library like [TableValue](https://data-oriented-house.github.io/TableValue/) allows you to run code when changes to tables occur. To comply with this, we can no longer use any data type we want, and must use tables to support indirections.
 
 ```lua
 local Module = {}
@@ -474,7 +474,8 @@ local Replicate = World1.factory {
 Module.factory = Replicate
 
 -- This would be called whenever we want to enqueue the current state of a component
--- to be replicated, which can be automated if using a reactive table library
+-- to be replicated, which can be automated if using a reactive table library. We can
+-- listen for when the table changes and call this, leaving it out-of-mind and out-of-sight.
 function Module.enqueue(entity, factory)
 	local name = Module.factoriesToNames[factory]
 	assert(name, 'Factory cannot be replicated!')
