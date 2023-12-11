@@ -1,4 +1,4 @@
-<img src=".moonwave/static/SoupWhiteBlack.png" alt="Stew Logo" width="512"/>
+<img src=".moonwave/static/SoupWhiteBlack.png" alt="Stew Logo" width="256" style="text-align:center"/>
 
 # [Documentation](https://data-oriented-house.github.io/Stew/)
 
