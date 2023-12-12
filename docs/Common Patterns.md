@@ -347,7 +347,7 @@ askForAllTag1.Event:Connect(function()
 	local tagged = world1.query { tag1 }
 
 	local list = {}
-	for entity in entities do
+	for entity in tagged do
 		table.insert(list, entity)
 	end
 
@@ -429,7 +429,7 @@ askForAllComponent1.Event:Connect(function()
 	local queried = world1.query { component1 }
 
 	local list = {}
-	for entity in entities do
+	for entity in queried do
 		list[entity] = world.get(entity)[component1]
 	end
 
@@ -603,7 +603,7 @@ Signals.askForAll:Fire()
 
 Pros:
 - Entities can be anything
-- Works for any component type
+- Works for any component shape
 - Works for all components
 - Decouples the two worlds
 - Accounts for entities that were added before the tag was created
