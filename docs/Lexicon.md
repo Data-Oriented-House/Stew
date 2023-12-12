@@ -24,3 +24,9 @@ This is a procedure that takes in a certain number of inputs, processes them, an
 
 ## What is a World?
 A world is an instantiable container for all entities, components, and other state. You create entities and components in worlds, and you can create different components in different worlds. For example, your server and clients will always have different worlds.
+
+## What is a Factory?
+A factory is an instantiable component "factory" that is responsible for adding, removing, and getting certain components from entities.
+
+## What is a Tag?
+A tag in the context of Stew is syntax sugar for a factory that makes `true` components. They solely mark the *existence* of something.

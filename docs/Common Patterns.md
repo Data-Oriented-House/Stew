@@ -430,7 +430,7 @@ askForAllComponent1.Event:Connect(function()
 
 	local list = {}
 	for entity in queried do
-		list[entity] = world.get(entity)[component1]
+		list[entity] = component1.get(entity)
 	end
 
 	giveAllComponent1:Fire(list)
@@ -452,7 +452,7 @@ componentAdded.Event:Connect(component2.add)
 componentRemoved.Event:Connect(component2.remove)
 
 componentChanged.Event:Connect(function(entity, key, value)
-	local component = world2.get(entity)[component2]
+	local component = component2.get(entity)
 	if key == 'height' or key == 'occupation' then
 		component[key] = value
 	end
@@ -520,7 +520,7 @@ function Module.enqueue(entity, factory)
 
 	local replicate = Replicate.add(entity) -- If it doesn't exist then it will be created else it will be returned
 
-	local other = World1.get(entity)[factory]
+	local other = factory.get(entity)
 	assert(other, `Entity does not have a {name} factory component`)
 
 	replicate[name] = other

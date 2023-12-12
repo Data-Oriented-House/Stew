@@ -94,6 +94,7 @@ export type Archetype<E, C, A..., R...> = {
 export type Factory<E, C, A..., R...> = {
 	add: (entity: E, A...) -> C,
 	remove: (entity: E, R...) -> (),
+	get: (entity: E) -> C?,
 	added: (entity: E, component: C) -> (),
 	removed: (entity: E, component: C) -> (),
 }
@@ -282,7 +283,7 @@ function Stew.world()
 			factory = factory,
 			signature = splace(world._nextPlace),
 			create = factoryArgs.add,
-			delete = factoryArgs.remove or nop :: Remove<E, C, A..., R...>,
+			delete = (factoryArgs.remove or nop) :: Remove<E, C, A..., R...>,
 		}
 
 		--[=[
@@ -391,6 +392,36 @@ function Stew.world()
 			world.removed(factory, entity, component)
 
 			return nil
+		end
+
+		--[=[
+			@within Factory
+			@param entity any
+			@return Component?
+
+			Returns the factory's type of component from the entity if it exists.
+
+			If component is not a table or other referenced type it will not be mutable. Use `World.get` instead if this is a requirement.
+			```lua
+			local World = require(path.to.World)
+
+			local Fly = World.factory { ... }
+
+			for _, player in Players:GetPlayers() do
+				Fly.add(player)
+			end
+
+			onPlayerTouched(BlackholeBrick, function(player: Player)
+				local fly = Fly.get(player)
+				if fly and fly.speed < Constants.LightSpeed then
+					World.kill(player)
+				end
+			end)
+			```
+		]=]
+		function factory.get(entity: E): C?
+			local entityData = world._entityToData[entity]
+			return if entityData then entityData.components[factory] else nil
 		end
 
 		world._factoryToData[factory] = archetype
