@@ -75,7 +75,7 @@ local Stew = {}
 export type Signature = string
 export type Component = any
 export type Entity = any
-export type Components<C> = { [Factory<Entity, C, ...any, ...any>]: C }
+export type Components<C> = { [Factory<Entity, C, any, ...any, ...any>]: C }
 export type Collection = {
 	[Entity]: Components<any>,
 }
@@ -83,18 +83,19 @@ export type EntityData = {
 	signature: Signature,
 	components: Components<any>,
 }
-export type Add<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, A...) -> C
-export type Remove<E, C, A..., R...> = (factory: Factory<E, C, A..., R...>, entity: E, component: C, R...) -> ()
-export type Archetype<E, C, A..., R...> = {
-	create: Add<E, C, A..., R...>,
-	delete: Remove<E, C, A..., R...>,
+export type Add<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, entity: E, A...) -> C
+export type Remove<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, entity: E, component: C, R...) -> ()
+export type Archetype<E, C, D, A..., R...> = {
+	create: Add<E, C, D, A..., R...>,
+	delete: Remove<E, C, D, A..., R...>,
 	signature: Signature,
-	factory: Factory<E, C, A..., R...>,
+	factory: Factory<E, C, D, A..., R...>,
 }
-export type Factory<E, C, A..., R...> = {
+export type Factory<E, C, D, A..., R...> = {
 	add: (entity: E, A...) -> C,
 	remove: (entity: E, R...) -> (),
 	get: (entity: E) -> C?,
+	data: D,
 	added: (entity: E, component: C) -> (),
 	removed: (entity: E, component: C) -> (),
 }
@@ -129,6 +130,8 @@ local tag = {
 	end,
 
 	remove = nop,
+
+	data = nil,
 }
 
 local function register<E>(world: World, entity: E)
@@ -149,7 +152,7 @@ end
 --[=[
 	@within World
 	@interface Archetype
-	.factory Factory<E, C, A..., R...>,
+	.factory Factory<E, C, D, A..., R...>,
 	.create (factory, entity: E, A...) -> C,
 	.delete (factory, entity: E, component: C, R...) -> ()
 	.signature string,
@@ -208,16 +211,16 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = nop :: (archetype: Archetype<Entity, Component, ...any, ...any>) -> (),
+		built = nop :: (archetype: Archetype<Entity, Component, any, ...any, ...any>) -> (),
 		spawned = nop :: (entity: Entity) -> (),
 		killed = nop :: (entity: Entity) -> (),
 		added = nop :: (
-			factory: Factory<Entity, Component, ...any, ...any>,
+			factory: Factory<Entity, Component, any, ...any, ...any>,
 			entity: Entity,
 			component: Component
 		) -> (),
 		removed = nop :: (
-			factory: Factory<Entity, Component, ...any, ...any>,
+			factory: Factory<Entity, Component, any, ...any, ...any>,
 			entity: Entity,
 			component: Component
 		) -> (),
@@ -228,6 +231,7 @@ function Stew.world()
 		@interface FactoryArgs
 		.add (factory: Factory, entity: E, A...) -> C
 		.remove (factory: Factory, entity: E, component: C, R...) -> ()?
+		.data D?
 	]=]
 
 	--[=[
@@ -235,7 +239,7 @@ function Stew.world()
 		@param factoryArgs FactoryArgs
 		@return Factory
 
-		Creates a new factory from an `add` constructor and optional `remove` destructor.
+		Creates a new factory from an `add` constructor and optional `remove` destructor. An optional `data` field can be defined here and accessed from the factory to store useful metadata like identifiers.
 
 		```lua
 		local world = Stew.world()
@@ -246,6 +250,14 @@ function Stew.world()
 			end,
 		}
 
+		print(position.data)
+		-- nil
+
+		print(position.add('A really cool entity', 5, 7, 9))
+		-- Vector3.new(5, 7, 9)
+
+		position.remove('A really cool entity')
+
 		local body = world.factory {
 			add = function(factory, entity: Instance, model: Model)
 				model.Parent = entity
@@ -254,7 +266,16 @@ function Stew.world()
 			remove = function(factory, entity: Instance, component: Model)
 				component:Destroy()
 			end,
+			data = 'A temple one might say...',
 		}
+
+		print(body.data)
+		-- 'A temple one might say...'
+
+		print(body.add(LocalPlayer, TemplateModel))
+		-- TemplateModel
+
+		body.remove(LocalPlayer)
 
 		-- If you'd like to listen for interesting events to happen, define these callbacks:
 
@@ -265,9 +286,10 @@ function Stew.world()
 		function body.removed(entity: Instance, component: Model) end
 		```
 	]=]
-	function world.factory<E, C, A..., R...>(factoryArgs: {
-		add: Add<E, C, A..., R...>,
-		remove: Remove<E, C, A..., R...>?,
+	function world.factory<E, C, D, A..., R...>(factoryArgs: {
+		add: Add<E, C, D, A..., R...>,
+		remove: Remove<E, C, D, A..., R...>?,
+		data: D?,
 	})
 		--[=[
 			@class Factory
@@ -277,13 +299,14 @@ function Stew.world()
 		local factory = {
 			added = nop,
 			removed = nop,
-		} :: Factory<E, C, A..., R...>
+			data = factoryArgs.data,
+		} :: Factory<E, C, D, A..., R...>
 
 		local archetype = {
 			factory = factory,
 			signature = splace(world._nextPlace),
 			create = factoryArgs.add,
-			delete = (factoryArgs.remove or nop) :: Remove<E, C, A..., R...>,
+			delete = (factoryArgs.remove or nop) :: Remove<E, C, D, A..., R...>,
 		}
 
 		--[=[
@@ -610,11 +633,15 @@ function Stew.world()
 		end)
 		```
 	]=]
-	function world.query(factories: { Factory<Entity, Component, ...any, ...any> }): Collection
+	function world.query(factories: { Factory<Entity, Component, any, ...any, ...any> }): Collection
 		local signature = charZero
 
 		for _, factory in factories do
 			local data = world._factoryToData[factory]
+			if not data then
+				error('Passed a non-factory or a different world\'s factory into a query!', 2)
+			end
+
 			signature = sor(signature, data.signature)
 		end
 
