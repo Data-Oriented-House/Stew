@@ -75,13 +75,13 @@ local Stew = {}
 export type Signature = string
 export type Component = any
 export type Entity = any
-export type Components<C> = { [Factory<Entity, C, any, ...any, ...any>]: C }
+export type Components = { [Factory<Entity, any, any, ...any, ...any>]: any }
 export type Collection = {
-	[Entity]: Components<any>,
+	[Entity]: Components,
 }
 export type EntityData = {
 	signature: Signature,
-	components: Components<any>,
+	components: Components,
 }
 export type Add<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, entity: E, A...) -> C
 export type Remove<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, entity: E, component: C, R...) -> ()
@@ -587,7 +587,7 @@ function Stew.world()
 		print(world.get(entity)[Chase]) -- TargetInstance
 		```
 	]=]
-	function world.get(entity: Entity): Components<any>
+	function world.get(entity: Entity): Components
 		local data = world._entityToData[entity]
 		return if data then data.components else empty
 	end
