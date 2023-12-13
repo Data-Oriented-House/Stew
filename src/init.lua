@@ -67,6 +67,61 @@ local function splace(place: number): string
 	return #String == 0 and charZero or table.concat(String, charEmpty)
 end
 
+local function nextId(last: number)
+	last += 1
+	local bytes = math.ceil(math.log(last + 1, 256))
+	local str = if bytes <= 1
+		then string.char(math.floor(last) % 256)
+		elseif bytes == 2 then string.char(math.floor(last) % 256, math.floor(last * 256 ^ -1) % 256)
+		elseif bytes == 3 then string.char(
+			math.floor(last) % 256,
+			math.floor(last * 256 ^ -1) % 256,
+			math.floor(last * 256 ^ -2) % 256
+		)
+		elseif bytes == 4 then string.char(
+			math.floor(last) % 256,
+			math.floor(last * 256 ^ -1) % 256,
+			math.floor(last * 256 ^ -2) % 256,
+			math.floor(last * 256 ^ -3) % 256
+		)
+		elseif bytes == 5 then string.char(
+			math.floor(last) % 256,
+			math.floor(last * 256 ^ -1) % 256,
+			math.floor(last * 256 ^ -2) % 256,
+			math.floor(last * 256 ^ -3) % 256,
+			math.floor(last * 256 ^ -4) % 256
+		)
+		elseif bytes == 6 then string.char(
+			math.floor(last) % 256,
+			math.floor(last * 256 ^ -1) % 256,
+			math.floor(last * 256 ^ -2) % 256,
+			math.floor(last * 256 ^ -3) % 256,
+			math.floor(last * 256 ^ -4) % 256,
+			math.floor(last * 256 ^ -5) % 256
+		)
+		elseif bytes == 7 then string.char(
+			math.floor(last) % 256,
+			math.floor(last * 256 ^ -1) % 256,
+			math.floor(last * 256 ^ -2) % 256,
+			math.floor(last * 256 ^ -3) % 256,
+			math.floor(last * 256 ^ -4) % 256,
+			math.floor(last * 256 ^ -5) % 256,
+			math.floor(last * 256 ^ -6) % 256
+		)
+		else string.char(
+			math.floor(last) % 256,
+			math.floor(last * 256 ^ -1) % 256,
+			math.floor(last * 256 ^ -2) % 256,
+			math.floor(last * 256 ^ -3) % 256,
+			math.floor(last * 256 ^ -4) % 256,
+			math.floor(last * 256 ^ -5) % 256,
+			math.floor(last * 256 ^ -6) % 256,
+			math.floor(last * 256 ^ -7) % 256
+		)
+
+	return last, str
+end
+
 --[=[
 	@class Stew
 ]=]
@@ -134,7 +189,7 @@ local tag = {
 	data = nil,
 }
 
-local function register<E>(world: World, entity: E)
+local function register(world: World, entity: any)
 	assert(not world._entityToData[entity], 'Attempting to register entity twice')
 
 	local entityData = {
@@ -147,6 +202,15 @@ local function register<E>(world: World, entity: E)
 	getCollection(world, charZero)[entity] = entityData.components
 
 	world.spawned(entity)
+end
+
+local function unregister(world: World, entity: any)
+	assert(world._entityToData[entity], 'Attempting to unregister entity twice')
+
+	getCollection(world, charZero)[entity] = nil
+	world._entityToData[entity] = nil
+
+	world.killed(entity)
 end
 
 --[=[
@@ -167,6 +231,8 @@ end
 	. killed (entity: any) -> ()
 	. built (archetype: Archetype) -> ()
 ]=]
+
+Stew._nextWorldId = -1
 
 --[=[
 	@within Stew
@@ -199,12 +265,14 @@ end
 function Stew.world()
 	--[=[
 		@class World
+
 		Worlds are containers for everything in your ECS. They hold all the state and factories you define later. They are very much, an isolated tiny world.
 
 		"Oh what a wonderful world!" - Louis Armstrong
 	]=]
 	local world = {
 		_nextPlace = 1,
+		_nextEntityId = -1,
 		_factoryToData = {},
 		_entityToData = {},
 		_signatureToCollection = {
@@ -225,6 +293,8 @@ function Stew.world()
 			component: Component
 		) -> (),
 	}
+
+	Stew._nextWorldId, world._id = nextId(Stew._nextWorldId)
 
 	--[=[
 		@within World
@@ -317,7 +387,7 @@ function Stew.world()
 
 			Adds the factory's type of component to the entity. If the component already exists, it just returns the old component and does not perform any further changes.
 
-			Anything can be an Entity, if an unregistered object is given a component it is registered as an entity.
+			Anything can be an Entity, if an unregistered object is given a component it is registered as an entity and fires the world `spawned` callback.
 
 			Fires the world and factory `added` callbacks.
 
@@ -379,6 +449,8 @@ function Stew.world()
 
 			Fires the world and factory `removed` callbacks.
 
+			If this is the last component the entity has, it kills the entity and fires the world `killed` callback.
+
 			```lua
 			-- continued from above example
 
@@ -413,6 +485,10 @@ function Stew.world()
 
 			factory.removed(entity, component)
 			world.removed(factory, entity, component)
+
+			if entityData.signature == charZero then
+				unregister(world, entity)
+			end
 
 			return nil
 		end
@@ -481,9 +557,7 @@ function Stew.world()
 
 		Creates an arbitrary entity and registers it. Keep in mind, in Stew, *anything* can be an Entity (except nil). If you don't have a pre-existing object to use as an entity, this will create a unique identifier you can use.
 
-		Cannot be sent over remotes. (If this is a feature you believe would be beneficial, make an issue in the repository for it!)
-
-		Fires the world `spawned` callback.
+		Can be sent over remotes and is unique across worlds!
 
 		```lua
 		local World = require(path.to.world)
@@ -499,10 +573,10 @@ function Stew.world()
 		-- continues to below example
 		```
 	]=]
-	function world.entity(): Entity
-		local entity = newproxy() :: Entity
-		register(world, entity)
-		return entity
+	function world.entity(): string
+		local entity
+		world._nextEntityId, entity = nextId(world._nextEntityId)
+		return world._id .. entity
 	end
 
 	--[=[
@@ -530,10 +604,7 @@ function Stew.world()
 			factory.remove(entity, ...)
 		end
 
-		getCollection(world, charZero)[entity] = nil
-		world._entityToData[entity] = nil
-
-		world.killed(entity)
+		unregister(world, entity)
 	end
 
 	--[=[
