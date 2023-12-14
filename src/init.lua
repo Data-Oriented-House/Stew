@@ -128,11 +128,9 @@ end
 local Stew = {}
 
 export type Signature = string
-export type Component = any
-export type Entity = any
-export type Components = { [Factory<Entity, any, any, ...any, ...any>]: any }
+export type Components = { [Factory<any, any, any, ...any, ...any>]: any }
 export type Collection = {
-	[Entity]: Components,
+	[any]: Components,
 }
 export type EntityData = {
 	signature: Signature,
@@ -155,7 +153,10 @@ export type Factory<E, C, D, A..., R...> = {
 	removed: (entity: E, component: C) -> (),
 }
 
-local function getCollection(world: World, signature: Signature): Collection
+local function getCollection(world: World, signature: string): Collection
+	local split = string.split(signature, '!')
+	local include, exclude = split[1], split[2]
+
 	local found = world._signatureToCollection[signature]
 	if found then
 		return found
@@ -167,9 +168,16 @@ local function getCollection(world: World, signature: Signature): Collection
 	local universal = world._signatureToCollection[charZero]
 	for entity in universal do
 		local data = world._entityToData[entity]
-		if sand(signature, data.signature) == signature then
-			collection[entity] = data.components
+
+		if sand(include, data.signature) ~= include then
+			continue
 		end
+
+		if exclude and sand(exclude, data.signature) ~= charZero then
+			continue
+		end
+
+		collection[entity] = data.components
 	end
 
 	return collection
@@ -180,7 +188,7 @@ local function nop()
 end
 
 local tag = {
-	add = function(factory, entity: Entity)
+	add = function(factory, entity: any)
 		return true
 	end,
 
@@ -279,18 +287,18 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = nop :: (archetype: Archetype<Entity, Component, any, ...any, ...any>) -> (),
-		spawned = nop :: (entity: Entity) -> (),
-		killed = nop :: (entity: Entity) -> (),
-		added = nop :: (
-			factory: Factory<Entity, Component, any, ...any, ...any>,
-			entity: Entity,
-			component: Component
+		built = (nop :: any) :: <E, C, D, A..., R...>(archetype: Archetype<E, C, D, A..., R...>) -> (),
+		spawned = nop :: (entity: any) -> (),
+		killed = nop :: (entity: any) -> (),
+		added = (nop :: any) :: <E, C, D, A..., R...>(
+			factory: Factory<E, C, D, A..., R...>,
+			entity: E,
+			component: C
 		) -> (),
-		removed = nop :: (
-			factory: Factory<Entity, Component, any, ...any, ...any>,
-			entity: Entity,
-			component: Component
+		removed = (nop :: any) :: <E, C, D, A..., R...>(
+			factory: Factory<E, C, D, A..., R...>,
+			entity: E,
+			component: C
 		) -> (),
 	}
 
@@ -375,7 +383,7 @@ function Stew.world()
 		local archetype = {
 			factory = factory,
 			signature = splace(world._nextPlace),
-			create = factoryArgs.add,
+			create = factoryArgs.add :: Add<E, C, D, A..., R...>,
 			delete = (factoryArgs.remove or nop) :: Remove<E, C, D, A..., R...>,
 		}
 
@@ -427,9 +435,18 @@ function Stew.world()
 			entityData.signature = signature
 
 			for collectionSignature, collection in world._signatureToCollection do
-				if collection[entity] or sand(collectionSignature, signature) ~= collectionSignature then
+				local collectionSplit = string.split(collectionSignature, '!')
+				local collectionInclude = collectionSplit[1]
+				local collectionExclude = collectionSplit[2]
+
+				if sand(collectionInclude, signature) ~= collectionInclude then
 					continue
 				end
+
+				if collectionExclude and sand(collectionExclude, signature) ~= charZero then
+					continue
+				end
+
 				collection[entity] = entityData.components
 			end
 
@@ -473,20 +490,30 @@ function Stew.world()
 
 			archetype.delete(factory, entity, component, ...)
 
+			local signature = sxor(entityData.signature, archetype.signature)
+			entityData.signature = signature
 			entityData.components[factory] = nil
-			entityData.signature = sxor(entityData.signature, archetype.signature)
 
 			for collectionSignature, collection in world._signatureToCollection do
-				if not collection[entity] or sand(archetype.signature, collectionSignature) ~= archetype.signature then
+				local collectionSplit = string.split(collectionSignature, '!')
+				local collectionInclude = collectionSplit[1]
+				local collectionExclude = collectionSplit[2]
+
+				if sand(collectionInclude, signature) ~= collectionInclude then
 					continue
 				end
+
+				if collectionExclude and sand(collectionExclude, signature) ~= charZero then
+					continue
+				end
+
 				collection[entity] = nil
 			end
 
 			factory.removed(entity, component)
 			world.removed(factory, entity, component)
 
-			if entityData.signature == charZero then
+			if not next(entityData.components) then
 				unregister(world, entity)
 			end
 
@@ -526,7 +553,7 @@ function Stew.world()
 		world._factoryToData[factory] = archetype
 		world._nextPlace += 1
 
-		world.built(archetype)
+		world.built(archetype :: any)
 
 		return factory
 	end
@@ -594,7 +621,7 @@ function Stew.world()
 		World.kill(enemy)
 		```
 	]=]
-	function world.kill(entity: Entity, ...: any)
+	function world.kill(entity: any, ...: any)
 		local entityData = world._entityToData[entity]
 		if not entityData then
 			return
@@ -603,8 +630,6 @@ function Stew.world()
 		for factory in entityData.components do
 			factory.remove(entity, ...)
 		end
-
-		unregister(world, entity)
 	end
 
 	--[=[
@@ -658,7 +683,7 @@ function Stew.world()
 		print(world.get(entity)[Chase]) -- TargetInstance
 		```
 	]=]
-	function world.get(entity: Entity): Components
+	function world.get(entity: any): Components
 		local data = world._entityToData[entity]
 		return if data then data.components else empty
 	end
@@ -666,20 +691,22 @@ function Stew.world()
 	--[=[
 		@within World
 		@tag Do Not Modify
-		@param factories { Factory }
+		@param include { Factory }
+		@param exclude { Factory }?
 		@return { [Entity]: Components }
 
-		Gets a set of all entities that have at least the queried components. (This is the magic sauce of it all!)
+		Gets a set of all entities that have all included components, and do not have any excluded components. (This is the magic sauce of it all!)
 
 		This is a reference to the internal representation, so mutating this table directly will cause Stew to be out-of-sync.
 
 		```lua
 		local World = require(path.to.world)
+		local Invincible = require(path.to.invincible.tag)
 		local Poisoned = require(path.to.poisoned.factory)
 		local Health = require(path.to.health.factory)
 		local Color = require(path.to.color.factory)
 
-		local poisonedHealths = world.query { Poisoned, Health }
+		local poisonedHealths = world.query({ Poisoned, Health }, { Invincible })
 
 		-- This is a very cool system
 		RunService.Heartbeat:Connect(function(deltaTime)
@@ -704,19 +731,37 @@ function Stew.world()
 		end)
 		```
 	]=]
-	function world.query(factories: { Factory<Entity, Component, any, ...any, ...any> }): Collection
-		local signature = charZero
+	function world.query(
+		include: { Factory<any, any, any, ...any, ...any> },
+		exclude: { Factory<any, any, any, ...any, ...any> }?
+	): Collection
+		local signatureInclude = charZero
 
-		for _, factory in factories do
+		for _, factory in include do
 			local data = world._factoryToData[factory]
 			if not data then
-				error('Passed a non-factory or a different world\'s factory into a query!', 2)
+				error('Passed a non-factory or a different world\'s factory into an include query!', 2)
 			end
 
-			signature = sor(signature, data.signature)
+			signatureInclude = sor(signatureInclude, data.signature)
 		end
 
-		return getCollection(world, signature)
+		if exclude then
+			local signatureExclude = charZero
+
+			for _, factory in exclude do
+				local data = world._factoryToData[factory]
+				if not data then
+					error('Passed a non-factory or a different world\'s factory into an exclude query!', 2)
+				end
+
+				signatureExclude = sor(signatureExclude, data.signature)
+			end
+
+			signatureInclude ..= '!' .. signatureExclude
+		end
+
+		return getCollection(world, signatureInclude)
 	end
 
 	return world
