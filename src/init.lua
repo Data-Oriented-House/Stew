@@ -154,21 +154,20 @@ export type Factory<E, C, D, A..., R...> = {
 }
 
 local function getCollection(world: World, signature: string): Collection
-	local split = string.split(signature, '!')
-	local include, exclude = split[1], split[2]
 
-	local found = world._signatureToCollection[signature]
+local found = world._signatureToCollection[signature]
 	if found then
 		return found
 	end
+
+	local split = string.split(signature, '!')
+	local include, exclude = split[1], split[2]
 
 	local collection = {} :: Collection
 	world._signatureToCollection[signature] = collection
 
 	local universal = world._signatureToCollection[charZero]
-	for entity in universal do
-		local data = world._entityToData[entity]
-
+	for entity, data in universal do
 		if sand(include, data.signature) ~= include then
 			continue
 		end
