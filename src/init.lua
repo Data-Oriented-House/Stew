@@ -154,8 +154,7 @@ export type Factory<E, C, D, A..., R...> = {
 }
 
 local function getCollection(world: World, signature: string): Collection
-
-local found = world._signatureToCollection[signature]
+	local found = world._signatureToCollection[signature]
 	if found then
 		return found
 	end
@@ -167,16 +166,12 @@ local found = world._signatureToCollection[signature]
 	world._signatureToCollection[signature] = collection
 
 	local universal = world._signatureToCollection[charZero]
-	for entity, data in universal do
-		if sand(include, data.signature) ~= include then
-			continue
-		end
 
-		if exclude and sand(exclude, data.signature) ~= charZero then
-			continue
+	for entity in universal do
+		local data = world._entityToData[entity]
+		if sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero) then
+			collection[entity] = data.components
 		end
-
-		collection[entity] = data.components
 	end
 
 	return collection
@@ -218,6 +213,23 @@ local function unregister(world: World, entity: any)
 	world._entityToData[entity] = nil
 
 	world.killed(entity)
+end
+
+local function updateCollections(world: World, entity: any, entityData: EntityData)
+	local signature = entityData.signature
+
+	for collectionSignature, collection in pairs(world._signatureToCollection) do
+		local collectionInclude, collectionExclude = split(collectionSignature)
+
+		if
+			sand(collectionInclude, signature) == collectionInclude
+			and (not collectionExclude or sand(collectionExclude, signature) == charZero)
+		then
+			collection[entity] = entityData.components
+		else
+			collection[entity] = nil
+		end
+	end
 end
 
 --[=[
@@ -433,21 +445,7 @@ function Stew.world()
 			local signature = sor(entityData.signature, archetype.signature)
 			entityData.signature = signature
 
-			for collectionSignature, collection in world._signatureToCollection do
-				local collectionSplit = string.split(collectionSignature, '!')
-				local collectionInclude = collectionSplit[1]
-				local collectionExclude = collectionSplit[2]
-
-				if sand(collectionInclude, signature) ~= collectionInclude then
-					continue
-				end
-
-				if collectionExclude and sand(collectionExclude, signature) ~= charZero then
-					continue
-				end
-
-				collection[entity] = entityData.components
-			end
+			updateCollections(world, entity, entityData)
 
 			factory.added(entity, component)
 			world.added(factory, entity, component)
@@ -493,21 +491,7 @@ function Stew.world()
 			entityData.signature = signature
 			entityData.components[factory] = nil
 
-			for collectionSignature, collection in world._signatureToCollection do
-				local collectionSplit = string.split(collectionSignature, '!')
-				local collectionInclude = collectionSplit[1]
-				local collectionExclude = collectionSplit[2]
-
-				if sand(collectionInclude, signature) ~= collectionInclude then
-					continue
-				end
-
-				if collectionExclude and sand(collectionExclude, signature) ~= charZero then
-					continue
-				end
-
-				collection[entity] = nil
-			end
+			updateCollections(world, entity, entityData)
 
 			factory.removed(entity, component)
 			world.removed(factory, entity, component)
