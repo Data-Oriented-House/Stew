@@ -218,8 +218,9 @@ end
 local function updateCollections(world: World, entity: any, entityData: EntityData)
 	local signature = entityData.signature
 
-	for collectionSignature, collection in pairs(world._signatureToCollection) do
-		local collectionInclude, collectionExclude = split(collectionSignature)
+	for collectionSignature, collection in world._signatureToCollection do
+		local collectionSplit = string.split(collectionSignature, '!')
+		local collectionInclude, collectionExclude = collectionSplit[1], collectionSplit[2]
 
 		if
 			sand(collectionInclude, signature) == collectionInclude
