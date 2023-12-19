@@ -5,5 +5,9 @@ selene.toml
 
 Packages/*
 
+tools/__pycache__
+profile.out
+profile.svg
+
 sourcemap.json
 *.lock
