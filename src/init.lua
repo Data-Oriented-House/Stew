@@ -249,7 +249,7 @@ export type World = {
 			data: D?,
 		}
 	) -> Factory<E, C, D, A..., R...>,
-	tag: () -> Factory<any, boolean, nil, (), ()>,
+	tag: () -> Factory<any, boolean, any, (), ()>,
 	entity: () -> string,
 	kill: (entity: any) -> (),
 	get: (entity: any) -> Components,
