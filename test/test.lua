@@ -344,7 +344,7 @@ do
 
 end]]
 
-local PN = 100--2 ^ 11 -- 2048
+local PN = 2 ^ 11 -- 2048
 
 do
 	local logs = {}
