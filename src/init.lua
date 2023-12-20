@@ -343,7 +343,6 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 		local e, w = Stew.tonumber(entity)
 		print('updateCollections', 'e' .. e, 'w' .. w, 's' .. signature)
 	end
-	-- end
 
 	for collectionSignature, collection in world._signatureToCollection do
 		local collectionSplit = string.split(collectionSignature, '!')
