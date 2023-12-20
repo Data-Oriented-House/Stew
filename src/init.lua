@@ -3,14 +3,17 @@
 local charEmpty = ''
 local charZero = '0'
 local asciiOne = string.byte '1'
+local asciiZero = string.byte '0'
 local empty = table.freeze {}
+
+local DEBUG = false
 
 local function sand(string1: string, string2: string): string
 	local length = math.max(#string1, #string2)
 	local string3 = table.create(length, 0)
 
 	for i in string3 do
-		string3[i] = (string.byte(string1, i) == asciiOne and string.byte(string2, i) == asciiOne) and 1 or 0
+		string3[i] = if string.byte(string1, i) == asciiOne and string.byte(string2, i) == asciiOne then 1 else 0
 	end
 
 	for i = length, 1, -1 do
@@ -20,7 +23,13 @@ local function sand(string1: string, string2: string): string
 		string3[i] = nil
 	end
 
-	return #string3 == 0 and charZero or table.concat(string3, charEmpty)
+	local out = #string3 == 0 and charZero or table.concat(string3, charEmpty)
+
+	if DEBUG then
+		print('sand', 'x ' .. string1, 'y ' .. string2, ' = ' .. out)
+	end
+
+	return out
 end
 
 local function sor(string1: string, string2: string): string
@@ -28,7 +37,7 @@ local function sor(string1: string, string2: string): string
 	local string3 = table.create(length, 0)
 
 	for i in string3 do
-		string3[i] = (string.byte(string1, i) == asciiOne or string.byte(string2, i) == asciiOne) and 1 or 0
+		string3[i] = if string.byte(string1, i) == asciiOne or string.byte(string2, i) == asciiOne then 1 else 0
 	end
 
 	for i = length, 1, -1 do
@@ -38,7 +47,13 @@ local function sor(string1: string, string2: string): string
 		string3[i] = nil
 	end
 
-	return #string3 == 0 and charZero or table.concat(string3, charEmpty)
+	local out = #string3 == 0 and charZero or table.concat(string3, charEmpty)
+
+	if DEBUG then
+		print('sor', 'x ' .. string1, 'y ' .. string2, ' = ' .. out)
+	end
+
+	return out
 end
 
 local function sxor(string1: string, string2: string): string
@@ -46,7 +61,7 @@ local function sxor(string1: string, string2: string): string
 	local string3 = table.create(length, 0)
 
 	for i in string3 do
-		string3[i] = string.byte(string1, i) == string.byte(string2, i) and 0 or 1
+		string3[i] = if (string.byte(string1, i) or asciiZero) == (string.byte(string2, i) or asciiZero) then 0 else 1
 	end
 
 	for i = #string3, 1, -1 do
@@ -56,15 +71,27 @@ local function sxor(string1: string, string2: string): string
 		string3[i] = nil
 	end
 
-	return #string3 == 0 and charZero or table.concat(string3, charEmpty)
+	local out = #string3 == 0 and charZero or table.concat(string3, charEmpty)
+
+	if DEBUG then
+		print('sxor', 'x ' .. string1, 'y ' .. string2, ' = ' .. out)
+	end
+
+	return out
 end
 
 local function splace(place: number): string
-	local String = table.create(place, 0)
+	local str = table.create(place, 0)
 
-	String[place] = 1
+	str[place] = 1
 
-	return #String == 0 and charZero or table.concat(String, charEmpty)
+	local out = #str == 0 and charZero or table.concat(str, charEmpty)
+
+	if DEBUG then
+		print('splace', 'place ' .. place, ' = ' .. out)
+	end
+
+	return out
 end
 
 local function nextId(last: number)
@@ -119,6 +146,10 @@ local function nextId(last: number)
 			math.floor(last * 256 ^ -7) % 256
 		)
 
+	if DEBUG then
+		print('nextId', ' = last ' .. last, 'str ' .. str)
+	end
+
 	return last, str
 end
 
@@ -126,6 +157,50 @@ end
 	@class Stew
 ]=]
 local Stew = {}
+
+--[=[
+	@within Stew
+
+	A function to extract the unique entity and world ids encoded in World.entity() strings.
+
+	Only works if there are less than 256 worlds. (This is reasonable right?)
+
+	```lua
+	local Stew = require(path.to.Stew)
+
+	local w0 = Stew.world()
+	local e00 = w0.entity()
+	local e10 = w0.entity()
+	local e20 = w0.entity()
+
+	print(Stew.tonumber(e00)) -- 0, 0
+	print(Stew.tonumber(e10)) -- 1, 0
+	print(Stew.tonumber(e20)) -- 2, 0
+
+	local w1 = Stew.world()
+
+	local e01 = w1.entity()
+	local e11 = w1.entity()
+	local e21 = w1.entity()
+
+	print(Stew.tonumber(e01)) -- 0, 1
+	print(Stew.tonumber(e11)) -- 1, 1
+	print(Stew.tonumber(e21)) -- 2, 1
+	```
+]=]
+function Stew.tonumber(entity: string)
+	-- Please don't make 256 or more worlds
+	local world, a, b, c, d, e, f, g, h = string.byte(entity, 1, 9)
+	local id = (h or 0) * 256 ^ 7
+		+ (g or 0) * 256 ^ 6
+		+ (f or 0) * 256 ^ 5
+		+ (e or 0) * 256 ^ 4
+		+ (d or 0) * 256 ^ 3
+		+ (c or 0) * 256 ^ 2
+		+ (b or 0) * 256
+		+ a
+	return id, world
+end
 
 export type Signature = string
 export type Components = { [Factory<any, any, any, ...any, ...any>]: any }
@@ -140,7 +215,7 @@ export type Add<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, e
 export type Remove<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, entity: E, component: C, R...) -> ()
 export type Archetype<E, C, D, A..., R...> = {
 	create: Add<E, C, D, A..., R...>,
-	delete: Remove<E, C, D, A..., R...>,
+	delete: Remove<E, C, D, A..., R...>?,
 	signature: Signature,
 	factory: Factory<E, C, D, A..., R...>,
 }
@@ -149,13 +224,47 @@ export type Factory<E, C, D, A..., R...> = {
 	remove: (entity: E, R...) -> (),
 	get: (entity: E) -> C?,
 	data: D,
-	added: (entity: E, component: C) -> (),
-	removed: (entity: E, component: C) -> (),
+	added: (entity: E, component: C) -> ()?,
+	removed: (entity: E, component: C) -> ()?,
+}
+
+export type World = {
+	_nextPlace: number,
+	_nextEntityId: number,
+	_factoryToData: { [Factory<any, any, any, ...any, ...any>]: Archetype<any, any, any, ...any, ...any> },
+	_entityToData: { [any]: EntityData },
+	_signatureToCollection: { [Signature]: Collection },
+	_id: string,
+
+	built: <E, C, D, A..., R...>(archetype: Archetype<E, C, D, A..., R...>) -> ()?,
+	spawned: (entity: any) -> ()?,
+	killed: (entity: any) -> ()?,
+	added: <E, C, D, A..., R...>(factory: Factory<E, C, D, A..., R...>, entity: E, component: C) -> ()?,
+	removed: <E, C, D, A..., R...>(factory: Factory<E, C, D, A..., R...>, entity: E, component: C) -> ()?,
+
+	factory: <E, C, D, A..., R...>(
+		factoryArgs: {
+			add: Add<E, C, D, A..., R...>,
+			remove: Remove<E, C, D, A..., R...>?,
+			data: D?,
+		}
+	) -> Factory<E, C, D, A..., R...>,
+	tag: () -> Factory<any, boolean, nil, (), ()>,
+	entity: () -> string,
+	kill: (entity: any) -> (),
+	get: (entity: any) -> Components,
+	query: (
+		include: { Factory<any, any, any, ...any, ...any> },
+		exclude: { Factory<any, any, any, ...any, ...any> }?
+	) -> Collection,
 }
 
 local function getCollection(world: World, signature: string): Collection
 	local found = world._signatureToCollection[signature]
 	if found then
+		if DEBUG then
+			print('getCollection (cached)', 's' .. signature)
+		end
 		return found
 	end
 
@@ -174,19 +283,17 @@ local function getCollection(world: World, signature: string): Collection
 		end
 	end
 
-	return collection
-end
+	if DEBUG then
+		print('getCollection', 's' .. signature)
+	end
 
-local function nop()
-	return
+	return collection
 end
 
 local tag = {
 	add = function(factory, entity: any)
 		return true
 	end,
-
-	remove = nop,
 
 	data = nil,
 }
@@ -201,30 +308,77 @@ local function register(world: World, entity: any)
 
 	world._entityToData[entity] = entityData
 
+	if DEBUG then
+		print('register', 'e' .. Stew.tonumber(entity))
+	end
+
 	getCollection(world, charZero)[entity] = entityData.components
 
-	world.spawned(entity)
+	if world.spawned then
+		world.spawned(entity)
+	end
 end
 
 local function unregister(world: World, entity: any)
 	assert(world._entityToData[entity], 'Attempting to unregister entity twice')
 
+	if DEBUG then
+		local e, w = Stew.tonumber(entity)
+		local s = world._entityToData[entity].signature
+		print('unregister', 'e' .. e, 'w' .. w, 's' .. s)
+	end
+
 	getCollection(world, charZero)[entity] = nil
 	world._entityToData[entity] = nil
 
-	world.killed(entity)
+	if world.killed then
+		world.killed(entity)
+	end
 end
 
 local function updateCollections(world: World, entity: any, entityData: EntityData)
 	local signature = entityData.signature
 
+	if DEBUG then
+		local e, w = Stew.tonumber(entity)
+		print('updateCollections', 'e' .. e, 'w' .. w, 's' .. signature)
+	end
+	-- end
+
 	for collectionSignature, collection in world._signatureToCollection do
 		local collectionSplit = string.split(collectionSignature, '!')
 		local collectionInclude, collectionExclude = collectionSplit[1], collectionSplit[2]
 
+		local collectionIncludeAndSignature = sand(collectionInclude, signature)
+		local collectionExcludeAndSignature = if collectionExclude then sand(collectionExclude, signature) else nil
+
+		if DEBUG then
+			print(
+				'',
+				's' .. signature,
+				'cs' .. collectionInclude,
+				collectionIncludeAndSignature,
+				collectionIncludeAndSignature == collectionInclude
+			)
+			if collectionExclude then
+				print(
+					'',
+					's' .. signature,
+					'cs' .. collectionExclude,
+					collectionExcludeAndSignature :: string,
+					not collectionExclude or collectionExcludeAndSignature == charZero
+				)
+			end
+			print(
+				'',
+				collectionIncludeAndSignature == collectionInclude
+					and (not collectionExclude or collectionExcludeAndSignature == charZero)
+			)
+		end
+
 		if
-			sand(collectionInclude, signature) == collectionInclude
-			and (not collectionExclude or sand(collectionExclude, signature) == charZero)
+			collectionIncludeAndSignature == collectionInclude
+			and (not collectionExclude or collectionExcludeAndSignature == charZero)
 		then
 			collection[entity] = entityData.components
 		else
@@ -299,22 +453,26 @@ function Stew.world()
 			[charZero] = {},
 		},
 
-		built = (nop :: any) :: <E, C, D, A..., R...>(archetype: Archetype<E, C, D, A..., R...>) -> (),
-		spawned = nop :: (entity: any) -> (),
-		killed = nop :: (entity: any) -> (),
-		added = (nop :: any) :: <E, C, D, A..., R...>(
+		built = nil :: <E, C, D, A..., R...>(archetype: Archetype<E, C, D, A..., R...>) -> ()?,
+		spawned = nil :: (entity: any) -> ()?,
+		killed = nil :: (entity: any) -> ()?,
+		added = nil :: <E, C, D, A..., R...>(
 			factory: Factory<E, C, D, A..., R...>,
 			entity: E,
 			component: C
-		) -> (),
-		removed = (nop :: any) :: <E, C, D, A..., R...>(
+		) -> ()?,
+		removed = nil :: <E, C, D, A..., R...>(
 			factory: Factory<E, C, D, A..., R...>,
 			entity: E,
 			component: C
-		) -> (),
-	}
+		) -> ()?,
+	} :: World
 
 	Stew._nextWorldId, world._id = nextId(Stew._nextWorldId)
+
+	if DEBUG then
+		print('Stew.world', '= w' .. string.byte(world._id))
+	end
 
 	--[=[
 		@within World
@@ -387,17 +545,21 @@ function Stew.world()
 			Factories are little objects responsible for adding and removing their specific type of component from entities. They are also used to access their type of component from entities and queries. They are well, component factories!
 		]=]
 		local factory = {
-			added = nop,
-			removed = nop,
-			data = factoryArgs.data,
+			added = nil,
+			removed = nil,
+			data = factoryArgs.data :: D,
 		} :: Factory<E, C, D, A..., R...>
 
 		local archetype = {
 			factory = factory,
 			signature = splace(world._nextPlace),
 			create = factoryArgs.add :: Add<E, C, D, A..., R...>,
-			delete = (factoryArgs.remove or nop) :: Remove<E, C, D, A..., R...>,
+			delete = factoryArgs.remove :: Remove<E, C, D, A..., R...>?,
 		}
+
+		if DEBUG then
+			print('world.factory', 'w' .. string.byte(world._id), 'f' .. archetype.signature, factory.data)
+		end
 
 		--[=[
 			@within Factory
@@ -426,6 +588,18 @@ function Stew.world()
 			```
 		]=]
 		function factory.add(entity: E, ...: A...): C
+			if DEBUG then
+				print(
+					'factory.add',
+					'w' .. string.byte(world._id),
+					'f' .. archetype.signature,
+					factory.data,
+					if type(entity) == 'string' then 'e' .. ({ Stew.tonumber(entity) })[1] else entity,
+					'args',
+					...
+				)
+			end
+
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				register(world, entity)
@@ -448,8 +622,13 @@ function Stew.world()
 
 			updateCollections(world, entity, entityData)
 
-			factory.added(entity, component)
-			world.added(factory, entity, component)
+			if factory.added then
+				factory.added(entity, component)
+			end
+
+			if world.added then
+				world.added(factory, entity, component)
+			end
 
 			return component
 		end
@@ -475,7 +654,19 @@ function Stew.world()
 			Move.remove(entity)
 			```
 		]=]
-		function factory.remove(entity: E, ...: R...): any?
+		function factory.remove(entity: E, ...: R...)
+			if DEBUG then
+				print(
+					'factory.remove',
+					'w' .. string.byte(world._id),
+					'f' .. archetype.signature,
+					factory.data,
+					if type(entity) == 'string' then 'e' .. ({ Stew.tonumber(entity) })[1] else entity,
+					'args',
+					...
+				)
+			end
+
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				return
@@ -486,7 +677,9 @@ function Stew.world()
 				return
 			end
 
-			archetype.delete(factory, entity, component, ...)
+			if archetype.delete then
+				archetype.delete(factory, entity, component, ...)
+			end
 
 			local signature = sxor(entityData.signature, archetype.signature)
 			entityData.signature = signature
@@ -494,8 +687,13 @@ function Stew.world()
 
 			updateCollections(world, entity, entityData)
 
-			factory.removed(entity, component)
-			world.removed(factory, entity, component)
+			if factory.removed then
+				factory.removed(entity, component)
+			end
+
+			if world.removed then
+				world.removed(factory, entity, component)
+			end
 
 			if not next(entityData.components) then
 				unregister(world, entity)
@@ -531,15 +729,26 @@ function Stew.world()
 		]=]
 		function factory.get(entity: E): C?
 			local entityData = world._entityToData[entity]
+			if DEBUG then
+				print(
+					'factory.get',
+					'w' .. string.byte(world._id),
+					'f' .. archetype.signature,
+					factory.data,
+					if type(entity) == 'string' then 'e' .. ({ Stew.tonumber(entity) })[1] else entity
+				)
+			end
 			return if entityData then entityData.components[factory] else nil
 		end
 
 		world._factoryToData[factory] = archetype
 		world._nextPlace += 1
 
-		world.built(archetype :: any)
+		if world.built then
+			world.built(archetype :: any)
+		end
 
-		return factory
+		return factory :: any
 	end
 
 	--[=[
@@ -560,6 +769,10 @@ function Stew.world()
 		```
 	]=]
 	function world.tag()
+		if DEBUG then
+			print 'world.tag'
+		end
+
 		return world.factory(tag)
 	end
 
@@ -587,6 +800,12 @@ function Stew.world()
 	function world.entity(): string
 		local entity
 		world._nextEntityId, entity = nextId(world._nextEntityId)
+
+		if DEBUG then
+			local e, w = Stew.tonumber(world._id .. entity)
+			print('world.entity', 'e' .. e, 'w' .. w)
+		end
+
 		return world._id .. entity
 	end
 
@@ -606,12 +825,29 @@ function Stew.world()
 		```
 	]=]
 	function world.kill(entity: any, ...: any)
+		if DEBUG then
+			print(
+				'world.entity',
+				if type(entity) == 'string' then 'e' .. ({ Stew.tonumber(entity) })[1] else entity,
+				'w' .. string.byte(world._id),
+				'args',
+				...
+			)
+		end
+
 		local entityData = world._entityToData[entity]
 		if not entityData then
 			return
 		end
 
+		local factories = {}
 		for factory in entityData.components do
+			table.insert(factories, factory)
+		end
+		-- table.sort(factories, function(a, b)
+		-- 	return world._factoryToData[a].signature > world._factoryToData[b].signature
+		-- end)
+		for _, factory in factories do
 			factory.remove(entity, ...)
 		end
 	end
@@ -668,6 +904,14 @@ function Stew.world()
 		```
 	]=]
 	function world.get(entity: any): Components
+		if DEBUG then
+			print(
+				'world.entity',
+				if type(entity) == 'string' then 'e' .. ({ Stew.tonumber(entity) })[1] else entity,
+				'w' .. string.byte(world._id)
+			)
+		end
+
 		local data = world._entityToData[entity]
 		return if data then data.components else empty
 	end
@@ -719,6 +963,27 @@ function Stew.world()
 		include: { Factory<any, any, any, ...any, ...any> },
 		exclude: { Factory<any, any, any, ...any, ...any> }?
 	): Collection
+		if DEBUG then
+			local includes = {}
+			local excludes = {}
+
+			for _, inc in include do
+				table.insert(includes, 'f' .. world._factoryToData[inc].signature .. ' ' .. tostring(inc.data))
+			end
+
+			if exclude then
+				for _, exc in exclude do
+					table.insert(includes, tostring(exc.data) .. ' f' .. world._factoryToData[exc].signature)
+				end
+			end
+
+			local t = 'world.query\n', '\tinclude ' .. table.concat(includes, ', ')
+			if excludes and #excludes > 0 then
+				t ..= '\n\texclude ' .. table.concat(excludes, ', ')
+			end
+			print(t)
+		end
+
 		local signatureInclude = charZero
 
 		for _, factory in include do
@@ -730,7 +995,7 @@ function Stew.world()
 			signatureInclude = sor(signatureInclude, data.signature)
 		end
 
-		if exclude then
+		if exclude and #exclude > 0 then
 			local signatureExclude = charZero
 
 			for _, factory in exclude do
@@ -745,12 +1010,22 @@ function Stew.world()
 			signatureInclude ..= '!' .. signatureExclude
 		end
 
-		return getCollection(world, signatureInclude)
+		local collection = getCollection(world, signatureInclude)
+
+		if DEBUG then
+			local entities = {}
+			for entity in collection do
+				local e = if type(entity) == 'string' then 'e' .. ({ Stew.tonumber(entity) })[1] else tostring(entity)
+				local s = 's' .. world._entityToData[entity].signature
+				table.insert(entities, e .. ' ' .. s)
+			end
+			print('{\n\t' .. table.concat(entities, ',\n\t') .. '\n}')
+		end
+
+		return collection
 	end
 
 	return world
 end
-
-export type World = typeof(Stew.world(...))
 
 return Stew
