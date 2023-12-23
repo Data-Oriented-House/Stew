@@ -350,6 +350,7 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 
 		local collectionIncludeAndSignature = sand(collectionInclude, signature)
 		local collectionExcludeAndSignature = if collectionExclude then sand(collectionExclude, signature) else nil
+		local hasEntity = collection[entity] ~= nil
 
 		if DEBUG then
 			print(
@@ -379,10 +380,10 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 			collectionIncludeAndSignature == collectionInclude
 			and (collectionExclude == nil or collectionExcludeAndSignature == charZero)
 		then
-			if collection[entity] == nil then -- Turns out if you don't add these if-checks you INVALIDATE ITERATION RANDOMLY ONCE IN A BLUE MOON
+			if not hasEntity then -- Turns out if you don't add these if-checks you INVALIDATE ITERATION RANDOMLY ONCE IN A BLUE MOON
 				collection[entity] = entityData.components
 			end
-		elseif collection[entity] ~= nil then
+		elseif hasEntity then
 			collection[entity] = nil
 		end
 	end
