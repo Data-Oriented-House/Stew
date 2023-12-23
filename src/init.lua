@@ -377,10 +377,12 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 
 		if
 			collectionIncludeAndSignature == collectionInclude
-			and (not collectionExclude or collectionExcludeAndSignature == charZero)
+			and (collectionExclude == nil or collectionExcludeAndSignature == charZero)
 		then
-			collection[entity] = entityData.components
-		else
+			if collection[entity] == nil then -- Turns out if you don't add these if-checks you INVALIDATE ITERATION RANDOMLY ONCE IN A BLUE MOON
+				collection[entity] = entityData.components
+			end
+		elseif collection[entity] ~= nil then
 			collection[entity] = nil
 		end
 	end
