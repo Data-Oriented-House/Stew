@@ -2,7 +2,7 @@
 local testkit = require 'test/testkit'
 local BENCH = testkit.benchmark()
 
-if true then
+if false then
 	BENCH = function(_, c)
 		c()
 	end
