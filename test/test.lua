@@ -1,6 +1,12 @@
 --!strict
 local testkit = require 'test/testkit'
-local BENCH, START = testkit.benchmark()
+local BENCH = testkit.benchmark()
+
+if true then
+	BENCH = function(_, c)
+		c()
+	end
+end
 
 local function TITLE(name: string)
 	print()
@@ -12,49 +18,51 @@ local stew = require 'src/init'
 local PN = 2 ^ 11 -- 2048
 
 -- do
-	local logs = {}
-
 	TITLE(`practical test Stew EC ({PN} entities)`)
-	local world = stew.world()
 
-	local Position = world.factory {
-		add = function(factory, entity, value: number)
-			return value
-		end,
+	local world
+	BENCH("create world", function()
+		world = stew.world()
+	end)
 
-		data = 'Position',
-	}
+	local Position, Velocity, Health, Dead
 
-	local Velocity = world.factory {
-		add = function(factory, entity, value: number)
-			return value
-		end,
+	BENCH("create factories", function()
+		Position = world.factory {
+			add = function(factory, entity, value: number)
+				return value
+			end,
 
-		data = 'Velocity',
-	}
+			data = 'Position',
+		}
 
-	local Health = world.factory {
-		add = function(factory, entity, value: number)
-			return value
-		end,
+		Velocity = world.factory {
+			add = function(factory, entity, value: number)
+				return value
+			end,
 
-		data = 'Health',
-	}
+			data = 'Velocity',
+		}
 
-	local Dead = world.tag()
-	Dead.data = 'Dead'
+		Health = world.factory {
+			add = function(factory, entity, value: number)
+				return value
+			end,
 
-	local function init()
+			data = 'Health',
+		}
+
+		Dead = world.tag()
+		Dead.data = 'Dead'
+	end)
+
+	BENCH('create entities with 3 components', function()
 		for i = 1, PN do
 			local id = world.entity()
 			Position.add(id, i)
 			Velocity.add(id, i)
 			Health.add(id, 0)
 		end
-	end
-
-	BENCH('create entities with 3 components', function()
-		init()
 	end)
 
 	BENCH('update positions', function()
@@ -85,14 +93,19 @@ local PN = 2 ^ 11 -- 2048
 	-- through each collection and check if it matches
 
 	BENCH('create entities with 3 components (cached)', function()
-		init()
+		for i = 1, PN do
+			local id = world.entity()
+			Position.add(id, i)
+			Velocity.add(id, i)
+			Health.add(id, 0)
+		end
 	end)
 
-	-- BENCH('update positions (cached)', function()
+	BENCH('update positions (cached)', function()
 		for id, data in world.query { Position, Velocity } do
 			data[Position] += data[Velocity] * 1 / 60
 		end
-	-- end)
+	end)
 
 	BENCH('add tags (cached)', function()
 		for id, data in world.query { Health } do

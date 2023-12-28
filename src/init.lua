@@ -231,6 +231,7 @@ export type World = {
 	_factoryToData: { [Factory<any, any, any, ...any, ...any>]: Archetype<any, any, any, ...any, ...any> },
 	_entityToData: { [any]: EntityData },
 	_signatureToCollection: { [Signature]: Collection },
+	_queryMeta: { __iter: (collection: Collection) -> () -> (any, EntityData) },
 	_id: string,
 
 	built: <E, C, D, A..., R...>(archetype: Archetype<E, C, D, A..., R...>) -> ()?,
@@ -256,7 +257,7 @@ export type World = {
 	) -> Collection,
 }
 
-local function iter(world)
+local function iter(world: World)
 	return function(collection: Collection)
 		local i = #collection
 		return function(): (any, EntityData)
@@ -271,7 +272,7 @@ local function iter(world)
 	end
 end
 
-local function getCollectionData(world: World, signature: string)
+local function getCollection(world: World, signature: string)
 	local found = world._signatureToCollection[signature]
 	if found then
 		if DEBUG then
@@ -283,15 +284,15 @@ local function getCollectionData(world: World, signature: string)
 	local split = string.split(signature, '!')
 	local include, exclude = split[1], split[2]
 
-	local collectionData = setmetatable({} :: { any }, { __iter = iter(world) })
+	local collectionData = setmetatable({} :: { any }, world._queryMeta)
 
 	world._signatureToCollection[signature] = collectionData
 
-	local universalData = world._signatureToCollection[charZero]
+	local universal = world._signatureToCollection[charZero]
 
 	do
 		local i = 0
-		for entity, data in universalData do
+		for entity, data in universal do
 			if
 				sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero)
 			then
@@ -309,7 +310,7 @@ local function getCollectionData(world: World, signature: string)
 	return collectionData
 end
 
-export type Collection = typeof(getCollectionData(...))
+export type Collection = typeof(getCollection(...))
 
 local tag = {
 	add = function(factory, entity: any)
@@ -333,10 +334,10 @@ local function register(world: World, entity: any)
 		print('register', 'e' .. Stew.tonumber(entity))
 	end
 
-	local universalData = getCollectionData(world, charZero)
-	local index = #universalData
-	universalData[index] = entity
-	-- universalData.indices[entity] = index
+	local universal = getCollection(world, charZero)
+	local index = #universal
+	universal[index] = entity
+	-- universal.indices[entity] = index
 
 	if world.spawned then
 		world.spawned(entity)
@@ -352,12 +353,12 @@ local function unregister(world: World, entity: any)
 		print('unregister', 'e' .. e, 'w' .. w, 's' .. s)
 	end
 
-	local universalData = getCollectionData(world, charZero)
-	local last = #universalData
-	local index = table.find(universalData :: any, entity) :: number
-	local lastEntity = universalData[last]
-	universalData[index], universalData[last] = lastEntity, nil
-	-- universalData.indices[lastEntity], universalData.indices[entity] = index, nil
+	local universal = getCollection(world, charZero)
+	local last = #universal
+	local index = table.find(universal :: any, entity) :: number
+	local lastEntity = universal[last]
+	universal[index], universal[last] = lastEntity, nil
+	-- universal.indices[lastEntity], universal.indices[entity] = index, nil
 
 	world._entityToData[entity] = nil
 
@@ -506,7 +507,8 @@ function Stew.world()
 	} :: World
 
 	Stew._nextWorldId, world._id = nextId(Stew._nextWorldId)
-	world._signatureToCollection[charZero] = getCollectionData(world, charZero)
+	world._queryMeta = { __iter = iter(world) }
+	world._signatureToCollection[charZero] = getCollection(world, charZero)
 
 	if DEBUG then
 		print('Stew.world', '= w' .. string.byte(world._id))
@@ -1048,7 +1050,7 @@ function Stew.world()
 			signatureInclude ..= '!' .. signatureExclude
 		end
 
-		local collection = getCollectionData(world, signatureInclude)
+		local collection = getCollection(world, signatureInclude)
 
 		if DEBUG then
 			local entities = {}
