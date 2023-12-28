@@ -204,9 +204,6 @@ end
 
 export type Signature = string
 export type Components = { [Factory<any, any, any, ...any, ...any>]: any }
-export type Collection = {
-	[any]: Components,
-}
 export type EntityData = {
 	signature: Signature,
 	components: Components,
@@ -259,7 +256,22 @@ export type World = {
 	) -> Collection,
 }
 
-local function getCollection(world: World, signature: string): Collection
+local function iter(world)
+	return function(collection: Collection)
+		local i = #collection
+		return function(): (any, EntityData)
+			if i >= 1 then
+				local entity = collection[i] :: any
+				i -= 1
+				return entity, world._entityToData[entity]
+			else
+				return nil, nil :: any
+			end
+		end
+	end
+end
+
+local function getCollectionData(world: World, signature: string)
 	local found = world._signatureToCollection[signature]
 	if found then
 		if DEBUG then
@@ -271,15 +283,22 @@ local function getCollection(world: World, signature: string): Collection
 	local split = string.split(signature, '!')
 	local include, exclude = split[1], split[2]
 
-	local collection = {} :: Collection
-	world._signatureToCollection[signature] = collection
+	local collectionData = setmetatable({} :: { any }, { __iter = iter(world) })
 
-	local universal = world._signatureToCollection[charZero]
+	world._signatureToCollection[signature] = collectionData
 
-	for entity in universal do
-		local data = world._entityToData[entity]
-		if sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero) then
-			collection[entity] = data.components
+	local universalData = world._signatureToCollection[charZero]
+
+	do
+		local i = 0
+		for entity, data in universalData do
+			if
+				sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero)
+			then
+				i += 1
+				collectionData[i] = entity
+				-- collectionData.indices[entity] = i
+			end
 		end
 	end
 
@@ -287,8 +306,10 @@ local function getCollection(world: World, signature: string): Collection
 		print('getCollection', 's' .. signature)
 	end
 
-	return collection
+	return collectionData
 end
+
+export type Collection = typeof(getCollectionData(...))
 
 local tag = {
 	add = function(factory, entity: any)
@@ -312,7 +333,10 @@ local function register(world: World, entity: any)
 		print('register', 'e' .. Stew.tonumber(entity))
 	end
 
-	getCollection(world, charZero)[entity] = entityData.components
+	local universalData = getCollectionData(world, charZero)
+	local index = #universalData
+	universalData[index] = entity
+	-- universalData.indices[entity] = index
 
 	if world.spawned then
 		world.spawned(entity)
@@ -328,7 +352,13 @@ local function unregister(world: World, entity: any)
 		print('unregister', 'e' .. e, 'w' .. w, 's' .. s)
 	end
 
-	getCollection(world, charZero)[entity] = nil
+	local universalData = getCollectionData(world, charZero)
+	local last = #universalData
+	local index = table.find(universalData :: any, entity) :: number
+	local lastEntity = universalData[last]
+	universalData[index], universalData[last] = lastEntity, nil
+	-- universalData.indices[lastEntity], universalData.indices[entity] = index, nil
+
 	world._entityToData[entity] = nil
 
 	if world.killed then
@@ -344,13 +374,14 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 		print('updateCollections', 'e' .. e, 'w' .. w, 's' .. signature)
 	end
 
-	for collectionSignature, collection in world._signatureToCollection do
+	for collectionSignature, collectionData in world._signatureToCollection do
 		local collectionSplit = string.split(collectionSignature, '!')
 		local collectionInclude, collectionExclude = collectionSplit[1], collectionSplit[2]
 
 		local collectionIncludeAndSignature = sand(collectionInclude, signature)
 		local collectionExcludeAndSignature = if collectionExclude then sand(collectionExclude, signature) else nil
-		local hasEntity = collection[entity] ~= nil
+		-- local hasEntity = collectionData.indices[entity] ~= nil
+		local hasEntity = table.find(collectionData :: any, entity)
 
 		if DEBUG then
 			print(
@@ -380,11 +411,17 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 			collectionIncludeAndSignature == collectionInclude
 			and (collectionExclude == nil or collectionExcludeAndSignature == charZero)
 		then
-			if not hasEntity then -- Turns out if you don't add these if-checks you INVALIDATE ITERATION RANDOMLY ONCE IN A BLUE MOON
-				collection[entity] = entityData.components
+			if not hasEntity then
+				local index = #collectionData
+				collectionData[index] = entity
+				-- collectionData.indices[entity] = index
 			end
 		elseif hasEntity then
-			collection[entity] = nil
+			local last = #collectionData
+			-- local index = collectionData.indices[entity]
+			local lastEntity = collectionData[last]
+			collectionData[hasEntity], collectionData[last] = lastEntity, nil
+			-- collectionData.indices[lastEntity], collectionData.indices[entity] = index, nil
 		end
 	end
 end
@@ -451,9 +488,7 @@ function Stew.world()
 		_nextEntityId = -1,
 		_factoryToData = {},
 		_entityToData = {},
-		_signatureToCollection = {
-			[charZero] = {},
-		},
+		_signatureToCollection = {},
 
 		built = nil :: <E, C, D, A..., R...>(archetype: Archetype<E, C, D, A..., R...>) -> ()?,
 		spawned = nil :: (entity: any) -> ()?,
@@ -471,6 +506,7 @@ function Stew.world()
 	} :: World
 
 	Stew._nextWorldId, world._id = nextId(Stew._nextWorldId)
+	world._signatureToCollection[charZero] = getCollectionData(world, charZero)
 
 	if DEBUG then
 		print('Stew.world', '= w' .. string.byte(world._id))
@@ -1012,7 +1048,7 @@ function Stew.world()
 			signatureInclude ..= '!' .. signatureExclude
 		end
 
-		local collection = getCollection(world, signatureInclude)
+		local collection = getCollectionData(world, signatureInclude)
 
 		if DEBUG then
 			local entities = {}

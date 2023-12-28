@@ -11,7 +11,7 @@ local stew = require 'src/init'
 
 local PN = 2 ^ 11 -- 2048
 
-do
+-- do
 	local logs = {}
 
 	TITLE(`practical test Stew EC ({PN} entities)`)
@@ -88,13 +88,11 @@ do
 		init()
 	end)
 
-	BENCH('update positions (cached)', function()
-		local i = 0
+	-- BENCH('update positions (cached)', function()
 		for id, data in world.query { Position, Velocity } do
 			data[Position] += data[Velocity] * 1 / 60
 		end
-		print(i)
-	end)
+	-- end)
 
 	BENCH('add tags (cached)', function()
 		for id, data in world.query { Health } do
@@ -113,4 +111,4 @@ do
 			world.kill(id)
 		end
 	end)
-end
+-- end
