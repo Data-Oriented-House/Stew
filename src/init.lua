@@ -1,59 +1,54 @@
 --!strict
 
 local empty = table.freeze {}
-local emptyString = ''
 
 local DEBUG = false
 
 local function toPackedString(x: number)
 	local bytes = math.ceil(math.log(x + 1, 256))
 	local str = if bytes <= 1
-		then string.char(math.floor(x) % 256)
-		elseif bytes == 2 then string.char(math.floor(x) % 256, math.floor(x * 256 ^ -1) % 256)
-		elseif bytes == 3 then string.char(
-			math.floor(x) % 256,
-			math.floor(x * 256 ^ -1) % 256,
-			math.floor(x * 256 ^ -2) % 256
-		)
+		then string.char(x)
+		elseif bytes == 2 then string.char(x % 256, x // 256 % 256)
+		elseif bytes == 3 then string.char(x // 256 ^ 0 % 256, x // 256 ^ 1 % 256, x // 256 ^ 2 % 256)
 		elseif bytes == 4 then string.char(
-			math.floor(x) % 256,
-			math.floor(x * 256 ^ -1) % 256,
-			math.floor(x * 256 ^ -2) % 256,
-			math.floor(x * 256 ^ -3) % 256
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256
 		)
 		elseif bytes == 5 then string.char(
-			math.floor(x) % 256,
-			math.floor(x * 256 ^ -1) % 256,
-			math.floor(x * 256 ^ -2) % 256,
-			math.floor(x * 256 ^ -3) % 256,
-			math.floor(x * 256 ^ -4) % 256
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256
 		)
 		elseif bytes == 6 then string.char(
-			math.floor(x) % 256,
-			math.floor(x * 256 ^ -1) % 256,
-			math.floor(x * 256 ^ -2) % 256,
-			math.floor(x * 256 ^ -3) % 256,
-			math.floor(x * 256 ^ -4) % 256,
-			math.floor(x * 256 ^ -5) % 256
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256,
+			x // 256 ^ 5 % 256
 		)
 		elseif bytes == 7 then string.char(
-			math.floor(x) % 256,
-			math.floor(x * 256 ^ -1) % 256,
-			math.floor(x * 256 ^ -2) % 256,
-			math.floor(x * 256 ^ -3) % 256,
-			math.floor(x * 256 ^ -4) % 256,
-			math.floor(x * 256 ^ -5) % 256,
-			math.floor(x * 256 ^ -6) % 256
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256,
+			x // 256 ^ 5 % 256,
+			x // 256 ^ 6 % 256
 		)
 		else string.char(
-			math.floor(x) % 256,
-			math.floor(x * 256 ^ -1) % 256,
-			math.floor(x * 256 ^ -2) % 256,
-			math.floor(x * 256 ^ -3) % 256,
-			math.floor(x * 256 ^ -4) % 256,
-			math.floor(x * 256 ^ -5) % 256,
-			math.floor(x * 256 ^ -6) % 256,
-			math.floor(x * 256 ^ -7) % 256
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256,
+			x // 256 ^ 5 % 256,
+			x // 256 ^ 6 % 256,
+			x // 256 ^ 7 % 256
 		)
 
 	if DEBUG then
@@ -137,8 +132,9 @@ export type World = {
 	_factoryToData: { [Factory<any, any, any, ...any, ...any>]: Archetype<any, any, any, ...any, ...any> },
 	_entityToData: { [any]: EntityData },
 	_signatureToCollection: {
-		[string | number]: CollectionData,
+		[string]: CollectionData,
 	},
+	_universalCollection: CollectionData,
 	_queryMeta: { __iter: (collection: Collection) -> () -> (any, EntityData) },
 	_id: string,
 
@@ -165,16 +161,17 @@ export type World = {
 	) -> Collection,
 }
 
-type Factories = { Factory<any, any, any, ...any, ...any> }
-
 local function iter(world: World)
 	return function(collection: Collection)
 		local i = #collection
 		return function(): (any, EntityData)
-			if i >= 1 then
+			if i > 0 then
 				local entity = collection[i] :: any
 				i -= 1
-				return entity, world._entityToData[entity] :: any
+				return entity,
+					(world._entityToData[entity] :: any) or error(
+						`Entity {Stew.tonumber(entity)} did not have any data! Unregistered but still in a collection`
+					)
 			else
 				return nil, nil :: any
 			end
@@ -182,7 +179,7 @@ local function iter(world: World)
 	end
 end
 
-local function hasAll(entityData: EntityData, factories: Factories)
+local function hasAll(entityData: EntityData, factories: { Factory<any, any, any, ...any, ...any> })
 	for _, factory in factories do
 		if entityData[factory] == nil then
 			return false
@@ -192,7 +189,7 @@ local function hasAll(entityData: EntityData, factories: Factories)
 	return true
 end
 
-local function hasAny(entityData: EntityData, factories: Factories)
+local function hasAny(entityData: EntityData, factories: { Factory<any, any, any, ...any, ...any> })
 	for _, factory in factories do
 		if entityData[factory] ~= nil then
 			return true
@@ -203,9 +200,13 @@ local function hasAny(entityData: EntityData, factories: Factories)
 end
 
 local hashIds = {}
-local function hash(world: World, include: Factories?, exclude: Factories?)
-	if include and #include > 0 then
-		table.clear(hashIds)
+local function hash(
+	world: World,
+	include: { Factory<any, any, any, ...any, ...any> }?,
+	exclude: { Factory<any, any, any, ...any, ...any> }?
+)
+	table.clear(hashIds)
+	if include and include[1] ~= nil then
 		for _, factory in include do
 			local data = world._factoryToData[factory]
 				or error('Passed a non-factory or a different world\'s factory into an include query!', 2)
@@ -216,7 +217,7 @@ local function hash(world: World, include: Factories?, exclude: Factories?)
 
 	local signature = table.concat(hashIds)
 
-	if exclude and #exclude > 0 then
+	if exclude and exclude[1] ~= nil then
 		table.clear(hashIds)
 		for _, factory in exclude do
 			local data = world._factoryToData[factory]
@@ -231,8 +232,19 @@ local function hash(world: World, include: Factories?, exclude: Factories?)
 	return signature
 end
 
-local function getCollectionData(world: World, include: Factories?, exclude: Factories?)
+local function getCollectionData(
+	world: World,
+	include: { Factory<any, any, any, ...any, ...any> }?,
+	exclude: { Factory<any, any, any, ...any, ...any> }?
+)
 	local signature = hash(world, include, exclude)
+	if signature == '' then
+		if DEBUG then
+			print 'getCollection (universal)'
+		end
+		return world._universalCollection
+	end
+
 	local found = world._signatureToCollection[signature]
 	if found then
 		if DEBUG then
@@ -241,23 +253,23 @@ local function getCollectionData(world: World, include: Factories?, exclude: Fac
 		return found
 	end
 
-	local entities = setmetatable({} :: { any }, world._queryMeta)
 	local indices = {}
+	local entities = setmetatable({} :: { any }, world._queryMeta)
 	local collectionData = {
 		entities = entities,
+		indices = indices,
 		include = include,
 		exclude = exclude,
-		indices = indices,
 	}
 
 	world._signatureToCollection[signature] = collectionData
 
 	local index = 0
-	local universal = world._signatureToCollection[emptyString].entities
+	local universal = world._universalCollection.entities
 	for entity, data in universal do
 		if (not include or hasAll(data, include)) and not (exclude and hasAny(data, exclude)) then
 			index += 1
-			entities[entity] = index
+			entities[index] = entity
 			indices[entity] = index
 		end
 	end
@@ -290,7 +302,7 @@ local function register(world: World, entity: any)
 		print('register', 'e' .. Stew.tonumber(entity))
 	end
 
-	local universal = world._signatureToCollection[emptyString]
+	local universal = world._universalCollection
 	local index = #universal.entities + 1
 	universal.entities[index] = entity
 	universal.indices[entity] = index
@@ -298,6 +310,8 @@ local function register(world: World, entity: any)
 	if world.spawned then
 		world.spawned(entity)
 	end
+
+	return entityData
 end
 
 local function unregister(world: World, entity: any)
@@ -308,7 +322,7 @@ local function unregister(world: World, entity: any)
 		print('unregister', 'e' .. e, 'w' .. w)
 	end
 
-	local universal = world._signatureToCollection[emptyString]
+	local universal = world._universalCollection
 	local last = #universal.entities
 
 	local index = universal.indices[entity]
@@ -331,32 +345,32 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 	end
 
 	for signature, collectionData in world._signatureToCollection do
+		local t0 = os.clock()
 		local collectionInclude, collectionExclude = collectionData.include, collectionData.exclude
 
-		-- if not collectionInclude and not collectionExclude then
-		-- 	continue
-		-- end
-		-- local t0 = os.clock()
-
-		local index = collectionData.indices[entity] :: number?
-
-		-- local t1 = os.clock()
-		-- print((t1 - t0) * 1_000_000)
+		local entities, indices = collectionData.entities, collectionData.indices
+		local index = indices[entity] :: number?
 
 		if
 			(not collectionInclude or hasAll(entityData, collectionInclude))
 			and not (collectionExclude and hasAny(entityData, collectionExclude))
 		then
 			if not index then
-				local newIndex = #collectionData.entities
-				collectionData.entities[newIndex] = entity
-				collectionData.indices[entity] = newIndex
+				local newIndex = #entities + 1
+				entities[newIndex] = entity
+				indices[entity] = newIndex
 			end
 		elseif index then
-			local lastEntity = table.remove(collectionData.entities :: any)
-			collectionData.entities[index] = lastEntity
-			collectionData.indices[entity] = nil
+			local lastEntity = table.remove(entities :: any)
+			indices[entity] = nil
+			if lastEntity ~= entity then
+				entities[index] = lastEntity
+				indices[lastEntity] = index
+			end
 		end
+
+		local t1 = os.clock()
+		print((t1 - t0) * 1_000_000)
 	end
 end
 
@@ -442,7 +456,7 @@ function Stew.world()
 	Stew._nextWorldId += 1
 	world._id = toPackedString(Stew._nextWorldId)
 	world._queryMeta = { __iter = iter(world) }
-	world._signatureToCollection[emptyString] = {
+	world._universalCollection = {
 		entities = setmetatable({} :: { any }, world._queryMeta),
 		indices = {},
 	}
@@ -581,8 +595,7 @@ function Stew.world()
 
 			local entityData = world._entityToData[entity]
 			if not entityData then
-				register(world, entity)
-				entityData = world._entityToData[entity]
+				entityData = register(world, entity)
 			end
 
 			if entityData[factory] then
@@ -590,12 +603,10 @@ function Stew.world()
 			end
 
 			local component = archetype.create(factory, entity, ...)
-			if component == nil then
-				return (nil :: any) :: C
+			if component ~= nil then
+				entityData[factory] = component
+				updateCollections(world, entity, entityData)
 			end
-
-			entityData[factory] = component
-			updateCollections(world, entity, entityData)
 
 			if factory.added then
 				factory.added(entity, component)
@@ -714,7 +725,6 @@ function Stew.world()
 		end
 
 		world._factoryToData[factory] = archetype
-		world._nextFactoryId += 1
 
 		if world.built then
 			world.built(archetype :: any)
@@ -930,7 +940,10 @@ function Stew.world()
 		end)
 		```
 	]=]
-	function world.query(include: Factories?, exclude: Factories?): Collection
+	function world.query(
+		include: { Factory<any, any, any, ...any, ...any> }?,
+		exclude: { Factory<any, any, any, ...any, ...any> }?
+	): Collection
 		if DEBUG then
 			local includes = {}
 			local excludes = {}
