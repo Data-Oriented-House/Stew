@@ -58,7 +58,7 @@ local function convert_units(unit: string, value: number): (number, string)
         [1] = "k",
         [0] = " ",
         [-1] = "m",
-        [-2] = "u",
+        [-2] = "μ",
         [-3] = "n",
         [-4] = "p"
     }

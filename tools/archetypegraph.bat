@@ -1,0 +1,1 @@
+luau tools/archetypegraph.lua >graphviz.dot
