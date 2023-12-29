@@ -264,7 +264,7 @@ local function iter(world: World)
 			if i >= 1 then
 				local entity = collection[i] :: any
 				i -= 1
-				return entity, world._entityToData[entity]
+				return entity, world._entityToData[entity].components :: any
 			else
 				return nil, nil :: any
 			end
@@ -291,14 +291,12 @@ local function getCollection(world: World, signature: string)
 	local universal = world._signatureToCollection[charZero]
 
 	do
-		local i = 0
-		for entity, data in universal do
+		for entity in universal do
+			local entityData = world._entityToData[entity] or error(`world._entityToData[{entity}] is nil`)
 			if
-				sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero)
+				sand(include, entityData.signature) == include and not (exclude ~= nil and sand(exclude, entityData.signature) ~= charZero)
 			then
-				i += 1
-				collectionData[i] = entity
-				-- collectionData.indices[entity] = i
+				table.insert(collectionData :: any, entity)
 			end
 		end
 	end
@@ -355,10 +353,9 @@ local function unregister(world: World, entity: any)
 
 	local universal = getCollection(world, charZero)
 	local last = #universal
-	local index = table.find(universal :: any, entity) :: number
+	local index = table.find(universal :: any, entity) or error(`How is entity {entity} not in the universal set??`)
 	local lastEntity = universal[last]
 	universal[index], universal[last] = lastEntity, nil
-	-- universal.indices[lastEntity], universal.indices[entity] = index, nil
 
 	world._entityToData[entity] = nil
 
@@ -410,11 +407,10 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 
 		if
 			collectionIncludeAndSignature == collectionInclude
-			and (collectionExclude == nil or collectionExcludeAndSignature == charZero)
+			and not (collectionExclude ~= nil and collectionExcludeAndSignature ~= charZero)
 		then
 			if not hasEntity then
-				local index = #collectionData
-				collectionData[index] = entity
+				table.insert(collectionData :: any, entity)
 				-- collectionData.indices[entity] = index
 			end
 		elseif hasEntity then
@@ -1017,7 +1013,7 @@ function Stew.world()
 				end
 			end
 
-			local t = 'world.query\n', '\tinclude ' .. table.concat(includes, ', ')
+			local t = 'world.query\n\tinclude ' .. table.concat(includes, ', ')
 			if excludes and #excludes > 0 then
 				t ..= '\n\texclude ' .. table.concat(excludes, ', ')
 			end
