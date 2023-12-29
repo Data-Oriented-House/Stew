@@ -174,7 +174,7 @@ local function iter(world: World)
 			if i >= 1 then
 				local entity = collection[i] :: any
 				i -= 1
-				return entity, world._entityToData[entity].components :: any
+				return entity, world._entityToData[entity] :: any
 			else
 				return nil, nil :: any
 			end
@@ -203,14 +203,16 @@ local function hasAny(entityData: EntityData, factories: Factories)
 end
 
 local hashIds = {}
-local function hash(world: World, include: Factories, exclude: Factories?)
-	table.clear(hashIds)
-	for _, factory in include do
-		local data = world._factoryToData[factory]
-			or error('Passed a non-factory or a different world\'s factory into an include query!', 2)
-		table.insert(hashIds, data.id)
+local function hash(world: World, include: Factories?, exclude: Factories?)
+	if include and #include > 0 then
+		table.clear(hashIds)
+		for _, factory in include do
+			local data = world._factoryToData[factory]
+				or error('Passed a non-factory or a different world\'s factory into an include query!', 2)
+			table.insert(hashIds, data.id)
+		end
+		table.sort(hashIds)
 	end
-	table.sort(hashIds)
 
 	local signature = table.concat(hashIds)
 
@@ -229,7 +231,7 @@ local function hash(world: World, include: Factories, exclude: Factories?)
 	return signature
 end
 
-local function getCollectionData(world: World, include: Factories, exclude: Factories?)
+local function getCollectionData(world: World, include: Factories?, exclude: Factories?)
 	local signature = hash(world, include, exclude)
 	local found = world._signatureToCollection[signature]
 	if found then
@@ -239,20 +241,24 @@ local function getCollectionData(world: World, include: Factories, exclude: Fact
 		return found
 	end
 
+	local entities = setmetatable({} :: { any }, world._queryMeta)
+	local indices = {}
 	local collectionData = {
-		entities = setmetatable({} :: { any }, world._queryMeta),
+		entities = entities,
 		include = include,
 		exclude = exclude,
+		indices = indices,
 	}
 
 	world._signatureToCollection[signature] = collectionData
-	local universalData = world._signatureToCollection[emptyString]
 
-	do
-		for entity, data in universalData.entities do
-			if hasAll(data, include) and not (exclude and hasAny(data, exclude)) then
-				-- table.insert(collectionData :: any, entity)
-			end
+	local index = 0
+	local universal = world._signatureToCollection[emptyString].entities
+	for entity, data in universal do
+		if (not include or hasAll(data, include)) and not (exclude and hasAny(data, exclude)) then
+			index += 1
+			entities[entity] = index
+			indices[entity] = index
 		end
 	end
 
@@ -284,8 +290,10 @@ local function register(world: World, entity: any)
 		print('register', 'e' .. Stew.tonumber(entity))
 	end
 
-	local universal = world._signatureToCollection[emptyString].entities
-	table.insert(universal :: any, entity)
+	local universal = world._signatureToCollection[emptyString]
+	local index = #universal.entities + 1
+	universal.entities[index] = entity
+	universal.indices[entity] = index
 
 	if world.spawned then
 		world.spawned(entity)
@@ -300,11 +308,14 @@ local function unregister(world: World, entity: any)
 		print('unregister', 'e' .. e, 'w' .. w)
 	end
 
-	local universal = world._signatureToCollection[emptyString].entities
-	local last = #universal
-	local index = table.find(universal :: any, entity) or error(`How is entity {entity} not in the universal set??`)
-	local lastEntity = universal[last]
-	universal[index], universal[last] = lastEntity, nil
+	local universal = world._signatureToCollection[emptyString]
+	local last = #universal.entities
+
+	local index = universal.indices[entity]
+	local lastEntity = universal.entities[last]
+
+	universal.entities[index], universal.entities[last] = lastEntity, nil
+	universal.indices[lastEntity], universal.indices[entity] = index, nil
 
 	world._entityToData[entity] = nil
 
@@ -320,26 +331,31 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 	end
 
 	for signature, collectionData in world._signatureToCollection do
-		local collection, collectionInclude, collectionExclude =
-			collectionData.entities, collectionData.include, collectionData.exclude
+		local collectionInclude, collectionExclude = collectionData.include, collectionData.exclude
 
 		-- if not collectionInclude and not collectionExclude then
 		-- 	continue
 		-- end
+		-- local t0 = os.clock()
 
-		local index = table.find(collection :: any, entity)
+		local index = collectionData.indices[entity] :: number?
+
+		-- local t1 = os.clock()
+		-- print((t1 - t0) * 1_000_000)
 
 		if
-			hasAll(entityData, collectionInclude)
+			(not collectionInclude or hasAll(entityData, collectionInclude))
 			and not (collectionExclude and hasAny(entityData, collectionExclude))
 		then
 			if not index then
-				-- table.insert(collection :: any, entity)
+				local newIndex = #collectionData.entities
+				collectionData.entities[newIndex] = entity
+				collectionData.indices[entity] = newIndex
 			end
 		elseif index then
-			-- local last = #collection
-			-- local lastEntity = collection[last]
-			-- collection[index], collection[last] = lastEntity, nil
+			local lastEntity = table.remove(collectionData.entities :: any)
+			collectionData.entities[index] = lastEntity
+			collectionData.indices[entity] = nil
 		end
 	end
 end
@@ -428,7 +444,7 @@ function Stew.world()
 	world._queryMeta = { __iter = iter(world) }
 	world._signatureToCollection[emptyString] = {
 		entities = setmetatable({} :: { any }, world._queryMeta),
-		include = {},
+		indices = {},
 	}
 
 	if DEBUG then
@@ -874,7 +890,7 @@ function Stew.world()
 	--[=[
 		@within World
 		@tag Do Not Modify
-		@param include { Factory }
+		@param include { Factory }?
 		@param exclude { Factory }?
 		@return { [Entity]: Components }
 
@@ -919,13 +935,15 @@ function Stew.world()
 			local includes = {}
 			local excludes = {}
 
-			for _, inc in include do
-				table.insert(includes, 'f' .. world._factoryToData[inc].signature .. ' ' .. tostring(inc.data))
+			if include then
+				for _, inc in include do
+					table.insert(includes, 'f' .. world._factoryToData[inc].id .. ' ' .. tostring(inc.data))
+				end
 			end
 
 			if exclude then
 				for _, exc in exclude do
-					table.insert(includes, tostring(exc.data) .. ' f' .. world._factoryToData[exc].signature)
+					table.insert(includes, tostring(exc.data) .. ' f' .. world._factoryToData[exc].id)
 				end
 			end
 

@@ -102,9 +102,12 @@ local PN = 2 ^ 11 -- 2048
 	end)
 
 	BENCH('update positions (cached)', function()
+		local i = 0
 		for id, data in world.query { Position, Velocity } do
 			data[Position] += data[Velocity] * 1 / 60
+			i += 1
 		end
+		-- print(i)
 	end)
 
 	BENCH('add tags (cached)', function()
