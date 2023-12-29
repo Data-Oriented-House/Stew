@@ -293,7 +293,9 @@ local tag = {
 }
 
 local function register(world: World, entity: any)
-	assert(not world._entityToData[entity], 'Attempting to register entity twice')
+	if DEBUG then
+		assert(not world._entityToData[entity], 'Attempting to register entity twice')
+	end
 
 	local entityData = {}
 	world._entityToData[entity] = entityData
@@ -315,9 +317,9 @@ local function register(world: World, entity: any)
 end
 
 local function unregister(world: World, entity: any)
-	assert(world._entityToData[entity], 'Attempting to unregister entity twice')
-
 	if DEBUG then
+		assert(world._entityToData[entity], 'Attempting to unregister entity twice')
+
 		local e, w = Stew.tonumber(entity)
 		print('unregister', 'e' .. e, 'w' .. w)
 	end
@@ -344,17 +346,35 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 		print('updateCollections', 'e' .. e, 'w' .. w)
 	end
 
+	-- local t0 = os.clock()
+
 	for signature, collectionData in world._signatureToCollection do
-		local t0 = os.clock()
 		local collectionInclude, collectionExclude = collectionData.include, collectionData.exclude
 
 		local entities, indices = collectionData.entities, collectionData.indices
 		local index = indices[entity] :: number?
 
-		if
-			(not collectionInclude or hasAll(entityData, collectionInclude))
-			and not (collectionExclude and hasAny(entityData, collectionExclude))
-		then
+		local shouldInsert = true
+
+		if collectionInclude then
+			for _, factory in collectionInclude do
+				if entityData[factory] == nil then
+					shouldInsert = false
+					break
+				end
+			end
+		end
+
+		if collectionExclude and shouldInsert then
+			for _, factory in collectionExclude do
+				if entityData[factory] ~= nil then
+					shouldInsert = false
+					break
+				end
+			end
+		end
+
+		if shouldInsert then
 			if not index then
 				local newIndex = #entities + 1
 				entities[newIndex] = entity
@@ -368,10 +388,10 @@ local function updateCollections(world: World, entity: any, entityData: EntityDa
 				indices[lastEntity] = index
 			end
 		end
-
-		local t1 = os.clock()
-		print((t1 - t0) * 1_000_000)
 	end
+
+	-- local t1 = os.clock()
+	-- print(t1 - t0)
 end
 
 --[=[
@@ -596,17 +616,17 @@ function Stew.world()
 			local entityData = world._entityToData[entity]
 			if not entityData then
 				entityData = register(world, entity)
-			end
-
-			if entityData[factory] then
+			elseif entityData[factory] then
 				return entityData[factory]
 			end
 
 			local component = archetype.create(factory, entity, ...)
-			if component ~= nil then
-				entityData[factory] = component
-				updateCollections(world, entity, entityData)
+			if component == nil then
+				return component
 			end
+
+			entityData[factory] = component
+			updateCollections(world, entity, entityData)
 
 			if factory.added then
 				factory.added(entity, component)
@@ -794,7 +814,9 @@ function Stew.world()
 	--[=[
 		@within World
 
-		Removes all components from an entity and unregisters it.
+		Removes all components from an entity and unregisters it. Can miss components if a remove function adds components back to the entity, not recommended.
+
+		For optimization reasons, the entity is taken out of all collections except the universal collection before calling any remove functions. Beware of this behavior!
 
 		Fires the world `killed` callback.
 
@@ -822,16 +844,33 @@ function Stew.world()
 			return
 		end
 
-		local factories = {}
-		for factory in entityData do
-			table.insert(factories, factory)
+		for _, collectionData in world._signatureToCollection do
+			local entities, indices = collectionData.entities, collectionData.indices
+			local index = indices[entity]
+			if not index then
+				continue
+			end
+
+			local lastEntity = table.remove(entities :: any)
+			indices[entity] = nil
+			if lastEntity ~= entity then
+				entities[index] = lastEntity
+				indices[lastEntity] = index
+			end
 		end
-		-- table.sort(factories, function(a, b)
-		-- 	return world._factoryToData[a].signature > world._factoryToData[b].signature
-		-- end)
-		for _, factory in factories do
-			factory.remove(entity, ...)
+
+		for factory, component in entityData do
+			local archetype = world._factoryToData[factory]
+			if archetype.delete then
+				archetype.delete(factory, entity, ...)
+			end
+
+			if factory.removed then
+				factory.removed(entity, component)
+			end
 		end
+
+		unregister(world, entity)
 	end
 
 	--[=[
@@ -907,6 +946,8 @@ function Stew.world()
 		Gets a set of all entities that have all included components, and do not have any excluded components. (This is the magic sauce of it all!)
 
 		This is a reference to the internal representation, so mutating this table directly will cause Stew to be out-of-sync.
+
+		If passed empty arrays or nil, will return the universal collection.
 
 		```lua
 		local World = require(path.to.world)
