@@ -8,19 +8,19 @@ As Stew's usage grows, patterns to achieve common tasks make themselves apparent
 
 ## Deferred Execution
 
-Sometimes you may find yourself needing to execute code *after* the constructor or other callback fires. To do this, and to not do more than you have to, you can use the factory's `added` callback.
+Sometimes you may find yourself needing to execute code _after_ the constructor or other callback fires. To do this, and to not do more than you have to, you can use the factory's `added` callback.
 
 ```lua
-local world = Stew.world()
+local world = Stew.world {}
 
 local myComponent = world.factory {
-	added = function(factory, entity)
+	add = function(factory, entity)
 		print("Before")
 		return true
 	end,
 }
 
-function myComponent.added(entity, component)
+function myComponent:added(entity, component)
 	print("After")
 end
 ```
@@ -30,57 +30,56 @@ end
 More often than not you will want to separate code execution from where it is being called, so you do not couple unrelated or modular code. Stew provides component-level and world-level ways to achieve this, both along the same lines and very simple. Since arbitrary code can be executed whenever a component is constructed, events of your choice can be fired.
 
 This also ties well into using Module Scripts when defining Worlds or Components, since you can easily define extra data alongside everything else and encourage more flexible data accessing. It pairs well with the idea of registries, modules of purely constant data.
-```lua
-local Module = {}
 
-Module.signals = {
-	built = Instance.new 'BindableEvent',
-	added = Instance.new 'BindableEvent',
+```lua
+local world = {
+	signals = {
+		built = Instance.new 'BindableEvent',
+		added = Instance.new 'BindableEvent',
+	},
 }
 
-Module.world = Stew.world()
-
-function Module.world.built(archetype)
+function world:built(archetype)
 	-- oooooh fancy under-the-hood stuffffffffff
-	Module.signals.built:Fire(archetype.signature)
+	self.signals.built:Fire(archetype.id)
 end
 
-function Module.world.added(factory, entity, component)
-	Module.signals.added:Fire(factory, entity, component)
+function world:added(factory, entity, component)
+	self.signals.added:Fire(factory, entity, component)
 end
 
-return Module
+return Stew.world(world)
 ```
+
 ```lua
 local World = require(path.to.module).world
 
-local Module = {}
-
-Module.signals = {
-	added = Instance.new 'BindableEvent',
-	removed = Instance.new 'BindableEvent',
+local factory = {
+	signals = {
+		added = Instance.new 'BindableEvent',
+		removed = Instance.new 'BindableEvent',
+	},
 }
 
-Module.factory = World.factory {
-	added = function(factory, entity: Player, x: number, y: number)
-		return x + y
-	end,
-}
+function factory:add(entity: Player, x: number, y: number)
+	return x + y
+end
 
-export type Component = typeof(Module.factory.add(...))
+export type Component = typeof(factory.add(...))
 
-function Module.factory.added(entity: Player, component: Component)
+function factory:added(entity: Player, component: Component)
 	Module.signals.added:Fire(entity, component)
 end
 
-function Module.factory.removed(entity: Player, component: Component)
+function factory:removed(entity: Player, component: Component)
 	Module.signals.removed:Fire(entity, component)
 end
 
-return Module
+return World.factory(factory)
 ```
 
 ## System Scheduling
+
 Systems are just functions, and typically they run on a certain schedule. RunService tends to do the trick here, but you can use whatever you want. Often we may need systems to run in a certain order, so we start by centralizing this logic in a single place.
 
 ```lua
@@ -109,6 +108,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	System3(deltaTime)
 end)
 ```
+
 However, this is both not very flexible and hard to maintain. We can't infer which systems depend on which, and we can't easily add or remove systems without coming back to this file. We can solve these by first inverting the relationship of each system to the event.
 
 ```lua
@@ -156,169 +156,184 @@ RunService.Heartbeat:Connect(Schedules.heartbeat.start)
 And now we clearly see System1 and System4 depend on System2, and System3 depends on System1. This will force us to think about our systems and how they interact with each other, and force us to not design cyclical systems.
 
 ## Reactive Components
-Sometimes we really want to know when components *change*. We get these benefits from ValueBase instances like NumberValues, ObjectValues, or the OSS variants like Observables. Anything can be a component in Stew, *there's nothing stopping you from using these as components.* Let's use the [TableValue](https://data-oriented-house.github.io/TableValue/) library to implement reactive tables with a similar api to ValueBase instances.
+
+Sometimes we really want to know when components _change_. We get these benefits from ValueBase instances like NumberValues, ObjectValues, or the OSS variants like Observables. Anything can be a component in Stew, _there's nothing stopping you from using these as components._ Let's use the [TableValue](https://data-oriented-house.github.io/TableValue/) library to implement reactive tables with a similar api to ValueBase instances.
 
 ```lua
 local World = require(path.to.World)
 local TableValue = require(path.to.TableValue)
 
-local MovementBoost = World.factory {
-	add = function(factory, entity: Humanoid, speedMultiplier: number, jumpMultiplier: number)
-		local self = {
-			old = {
-				WalkSpeed = entity.WalkSpeed,
-				JumpPower = entity.JumpPower,
-			},
-			multipliers = TableValue.new {},
-		}
+local MovementBoost = {}
 
-		-- Very fun stuff! This will update our humanoid whenever we add a field
-		function self.multipliers.Changed(property: string, value: number)
-			entity[property] = value * self.old[property]
-		end
+function MovementBoost:add(entity: Humanoid, speedMultiplier: number, jumpMultiplier: number)
+	local boost = {
+		old = {
+			WalkSpeed = entity.WalkSpeed,
+			JumpPower = entity.JumpPower,
+		},
+		multipliers = TableValue.new {},
+	}
 
-		-- Add the fields (one by one so they can be automatically updated (exciting!))
-		self.multipliers.WalkSpeed = speedMultiplier
-		self.multipliers.JumpPower = jumpMultiplier
+	-- Very fun stuff! This will update our humanoid whenever we add a field
+	function boost.multipliers.Changed(property: string, value: number)
+		entity[property] = value * boost.old[property]
+	end
 
-		return self
-	end,
+	-- Add the fields (one by one so they can be automatically updated (exciting!))
+	boost.multipliers.WalkSpeed = speedMultiplier
+	boost.multipliers.JumpPower = jumpMultiplier
 
-	remove = function(factory, entity: Humanoid, self)
-		entity.WalkSpeed = self.old.Walkspeed
-		entity.JumpPower = self.old.JumpPower
-	end,
-}
+	return boost
+end
 
-return MovementBoost
+function MovementBoost:remove(entity: Humanoid, boost)
+	entity.WalkSpeed = boost.old.Walkspeed
+	entity.JumpPower = boost.old.JumpPower
+end
+
+return World.factory(MovementBoost)
 ```
 
 ## Instances As Entities
+
 There are many cases you'll want to use an Instance as an Entity, such as the Player, Character, monster model, etc. Stew allows this, but does not clean up components if the instance is destroyed (the instance still exists anyways!). To implement this, we can take advantage of the world `spawned` callback.
 
 ```lua
-local world = Stew.world()
+local world = Stew.world {
+	connections = {}
+}
 
-local connections = {}
-
-function world.spawned(entity)
+function world:spawned(entity)
 	if typeof(entity) == "Instance" then
-		connections[entity] = entity.Destroyed:Once(function()
-			world.kill(entity)
+		self.connections[entity] = entity.Destroyed:Once(function()
+			self.kill(entity)
 		end)
 	end
 end
 
-function world.killed(entity)
+function world:killed(entity)
 	if typeof(entity) == "Instance" then
-		connections[entity]:Disconnect()
-		connections[entity] = nil
+		self.connections[entity]:Disconnect()
+		self.connections[entity] = nil
 	end
 end
+
+return world
 ```
 
 ## CollectionService Integration
+
 CollectionService is a powerful tool and useful for tag replication. We can use our factory callbacks to integrate with it.
 
 ```lua
-local world = Stew.world()
+local world = Stew.world {}
 
 -- We could use a normal factory,
 -- but since CollectionService tags only exist to be added and removed,
 -- they can't have any data anyways, so we'll use a tag instead.
-local poisoned = world.tag()
+local poisoned = world.tag {}
 
-function poisoned.added(entity: Instance)
+function poisoned:added(entity: Instance)
 	entity:AddTag 'Poisoned'
 end
 
-function poisoned.removed(entity: Instance)
+function poisoned:removed(entity: Instance)
 	entity:RemoveTag 'Poisoned'
 end
 
-CollectionService:GetInstanceAddedSignal('Poisoned'):Connect(world.factory.add)
-CollectionService:GetInstanceRemovedSignal('Poisoned'):Connect(world.factory.remove)
+CollectionService:GetInstanceAddedSignal('Poisoned'):Connect(poisoned.add)
+CollectionService:GetInstanceRemovedSignal('Poisoned'):Connect(poisoned.remove)
 ```
 
 Notice we have to come up with a new string for each tag. This is because CollectionService uses strings to identify tags while Stew uses factories. If you'd like, you can keep a registry mapping factories to names, but unless everything is centralized beforehand this can be a pain to maintain.
 
 ## Replication
+
 Replication is a very complex topic, and Stew does not provide any replication out of the box because there are so many ways it can be done optimally. However, it does provide a very powerful foundation to build upon. The following is a very simple example of how you could implement replication.
 
 First we need to understand the problem. We need to selectively copy the state of one world to another. Worse, these worlds are separated across the client/server boundary and can't communicate with each other directly. Let's tackle these one at a time, and work on a case-by-case basis.
 
 To begin, we allow ourself to make the assumption world1 exists before world2. Any connections world1 performs will have happened before world2 is created. This is a reasonable assumption mimicking server/client relationships.
 
-(*These code examples have not been tested and here solely for educational purposes*)
+(_These code examples have not been tested and here solely for educational purposes_)
 
 ### Tag Callbacks
 
 ```lua
-local world1 = Stew.world()
-local tag1 = world1.tag()
+local world1 = Stew.world {}
+local tag1 = world1.tag {}
 ```
-```lua
-local world2 = Stew.world()
-local tag2 = world2.tag()
 
-function tag1.added(entity)
+```lua
+local world2 = Stew.world {}
+local tag2 = world2.tag {}
+
+function tag1:added(entity)
 	tag2.add(entity)
 end
 
-function tag1.removed(entity)
+function tag1:removed(entity)
 	tag2.remove(entity)
 end
 ```
+
 Pros:
-- Entities can be anything
-- Dead simple to setup and maintain
-- Concise and scalable
+
+-   Entities can be anything
+-   Dead simple to setup and maintain
+-   Concise and scalable
 
 Cons:
-- Only works for tags
-- Only works for this component
-- Can't do anything more with tag1's callbacks
-- Couples the two worlds together and their factories directly
-- Doesn't account for entities that were added before the tag was created
+
+-   Only works for tags
+-   Only works for this component
+-   Can't do anything more with tag1's callbacks
+-   Couples the two worlds together and their factories directly
+-   Doesn't account for entities that were added before the tag was created
 
 ### Tag Signals
 
 To decouple the two worlds, we can use signals.
 
 ```lua
-local world1 = Stew.world()
-local tag1 = world1.tag()
-
 local tagAdded = Instance.new 'BindableEvent'
 local tagRemoved = Instance.new 'BindableEvent'
+```
 
-function tag1.added(entity)
+```lua
+local world1 = Stew.world {}
+local tag1 = world1.tag {}
+
+function tag1:added(entity)
 	tagAdded:Fire(entity)
 end
 
-function tag1.removed(entity)
+function tag1:removed(entity)
 	tagRemoved:Fire(entity)
 end
 ```
+
 ```lua
-local world2 = Stew.world()
-local tag2 = world2.tag()
+local world2 = Stew.world {}
+local tag2 = world2.tag {}
 
 tagAdded.Event:Connect(tag2.add)
 tagRemoved.Event:Connect(tag2.remove)
 ```
 
 Pros:
-- Entities can be anything
-- Decouples the two worlds
-- Can do more with tag1's callbacks
-- Still concise
+
+-   Entities can be anything
+-   Decouples the two worlds
+-   Can do more with tag1's callbacks
+-   Still concise
 
 Cons:
-- Only works for tags
-- Only works for this component
-- Doesn't account for entities that were added before the tag was created
-- Not as scalable
+
+-   Only works for tags
+-   Only works for this component
+-   Doesn't account for entities that were added before the tag was created
+-   Not as scalable
 
 ### Tag Signals + Entity Fetching
 
@@ -328,18 +343,19 @@ The only way we can guarantee that we get all the initial entities is by asking 
 local askForAllTag1 = Instance.new 'BindableEvent'
 local giveAllTag1 = Instance.new 'BindableEvent'
 ```
+
 ```lua
-local world1 = Stew.world()
-local tag1 = world1.tag()
+local world1 = Stew.world {}
+local tag1 = world1.tag {}
 
 local tagAdded = Instance.new 'BindableEvent'
 local tagRemoved = Instance.new 'BindableEvent'
 
-function tag1.added(entity)
+function tag1:added(entity)
 	tagAdded:Fire(entity)
 end
 
-function tag1.removed(entity)
+function tag1:removed(entity)
 	tagRemoved:Fire(entity)
 end
 
@@ -354,9 +370,10 @@ askForAllTag1.Event:Connect(function()
 	giveAllTag1:Fire(list)
 end)
 ```
+
 ```lua
-local world2 = Stew.world()
-local tag2 = world2.tag()
+local world2 = Stew.world {}
+local tag2 = world2.tag {}
 
 tagAdded.Event:Connect(tag2.add)
 tagRemoved.Event:Connect(tag2.remove)
@@ -371,15 +388,17 @@ askForAllTag1:Fire()
 ```
 
 Pros:
-- Entities can be anything
-- Decouples the two worlds
-- Can do more with tag1's callbacks
-- Accounts for entities that were added before the tag was created
+
+-   Entities can be anything
+-   Decouples the two worlds
+-   Can do more with tag1's callbacks
+-   Accounts for entities that were added before the tag was created
 
 Cons:
-- Only works for tags
-- Only works for this component
-- Losing conciseness and scalability
+
+-   Only works for tags
+-   Only works for this component
+-   Losing conciseness and scalability
 
 ### Factory Signals + Entity Fetching
 
@@ -389,16 +408,17 @@ To make this work for more than just tags, we need factories. However, now our c
 local askForAllComponent1 = Instance.new 'BindableEvent'
 local giveAllComponent1 = Instance.new 'BindableEvent'
 ```
+
 ```lua
 local ReactiveTable = require(path.to.reactiveTable) -- hypothetical implementation
-local world1 = Stew.world()
+local world1 = Stew.world {}
 
 local componentAdded = Instance.new 'BindableEvent'
 local componentRemoved = Instance.new 'BindableEvent'
 local componentChanged = Instance.new 'BindableEvent'
 
 local component1 = world1.factory {
-	added = function(factory, entity, name: string, height: number, occupation: string)
+	add = function(factory, entity, name: string, height: number, occupation: string)
 		local self = ReactiveTable.wrap {
 			name = name,
 			height = height,
@@ -412,16 +432,16 @@ local component1 = world1.factory {
 		return self
 	end,
 
-	removed = function(factory, entity, self)
+	remove = function(factory, entity, self)
 		self.Value.changed:Disconnect()
 	end,
 }
 
-function component1.added(entity, component)
+function component1:added(entity, component)
 	componentAdded:Fire(entity, component)
 end
 
-function component1.removed(entity, component)
+function component1:removed(entity, component)
 	componentRemoved:Fire(entity)
 end
 
@@ -436,8 +456,9 @@ askForAllComponent1.Event:Connect(function()
 	giveAllComponent1:Fire(list)
 end)
 ```
+
 ```lua
-local world2 = Stew.world()
+local world2 = Stew.world {}
 
 local component2 = world2.factory {
 	added = function(factory, entity, height: number, occupation: string)
@@ -468,18 +489,20 @@ askForAllComponent1:Fire()
 ```
 
 Pros:
-- Entities can be anything
-- Works for any component type
-- Decouples the two worlds
-- Accounts for entities that were added before the tag was created
+
+-   Entities can be anything
+-   Works for any component type
+-   Decouples the two worlds
+-   Accounts for entities that were added before the tag was created
 
 Cons:
-- Only works for this component
-- Really losing conciseness and scalability
+
+-   Only works for this component
+-   Really losing conciseness and scalability
 
 ### Centralized Signals + Entity Fetching
 
-To fix the scalability issue, we can centralize everything into a "Replication" system. This centralized system will be responsible for all replication. Since this is centralized, we will inevitably start coupling other factories to this system to map the factories to names and from names to factories again. We can use this to our advantage though, and maintain our *selective* capabilities like before. Only certain factories will replicate.
+To fix the scalability issue, we can centralize everything into a "Replication" system. This centralized system will be responsible for all replication. Since this is centralized, we will inevitably start coupling other factories to this system to map the factories to names and from names to factories again. We can use this to our advantage though, and maintain our _selective_ capabilities like before. Only certain factories will replicate.
 
 We now face another issue, how do we know when to replicate? We want to replicate when a component changes, meaning we need to keep track of that somehow. A reactive table library like [TableValue](https://data-oriented-house.github.io/TableValue/) allows you to run code when changes to tables occur. To comply with this, we can no longer use any data type we want, and must use tables to support indirections.
 
@@ -492,16 +515,11 @@ Module.update = Instance.new 'BindableEvent'
 
 return Module
 ```
+
 ```lua
 local World1 = require(path.to.World1)
 
 local Module = {}
-
-Module.factoriesToNames = {
-	[require(path.to.component1.factory)] = 'a', -- strings save the most space,
-	[require(path.to.component2.factory)] = 'b', -- consider automating this process
-	[require(path.to.component4.tag)]	  = 'c', -- with a compression library like Squash
-}
 
 local Replicate = World1.factory {
 	added = function(factory, entity)
@@ -515,19 +533,19 @@ Module.factory = Replicate
 -- to be replicated, which can be automated if using a reactive table library. We can
 -- listen for when the table changes and call this, leaving it out-of-mind and out-of-sight.
 function Module.enqueue(entity, factory)
-	local name = Module.factoriesToNames[factory]
-	assert(name, 'Factory cannot be replicated!')
-
-	local replicate = Replicate.add(entity) -- If it doesn't exist then it will be created else it will be returned
+	local name = factory.replicateName
+		or error(`Factory cannot be replicated!`)
 
 	local other = factory.get(entity)
-	assert(other, `Entity does not have a {name} factory component`)
+		or error(`{entity} Entity does not have a {name} factory component`)
 
+	local replicate = Replicate.add(entity) -- If it doesn't exist then it will be created else it will be returned
 	replicate[name] = other
 end
 
 return Module
 ```
+
 ```lua
 local World1 = require(path.to.World1)
 local Replicate = require(path.to.Replicate.factory).factory
@@ -560,7 +578,9 @@ Signals.askForAll.Event:Connect(function()
 	Signals.giveAll:Fire(payload)
 end)
 ```
+
 Then on one of the receiving ends:
+
 ```lua
 local World2 = require(path.to.World2)
 local Signals = require(path.to.Signals)
@@ -602,15 +622,18 @@ Signals.askForAll:Fire()
 ```
 
 Pros:
-- Entities can be anything
-- Works for any component shape
-- Works for all components
-- Decouples the two worlds
-- Accounts for entities that were added before the tag was created
+
+-   Entities can be anything
+-   Works for any component shape
+-   Works for all components
+-   Decouples the two worlds
+-   Accounts for entities that were added before the tag was created
 
 Cons:
-- Can't make enough assumptions to optimize
-- This is a nontrivial section of the codebase now
+
+-   Can't make enough assumptions to optimize
+-   This is a nontrivial section of the codebase now
 
 ### Final Notes
+
 Clearly there are a lot of ways one can engineer replication. Aim for the simplest solution and don't try to overcomplicate it. Think about what will be most ergonomic to work with, maintain, and extend upon and roll with it. If you can't decide, try the simplest approach until you figure out what needs to be more complicated.
