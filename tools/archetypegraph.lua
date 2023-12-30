@@ -72,4 +72,4 @@ function generateGraphviz(elements)
     print('}')
 end
 
-generateGraphviz({"A", "B", "C"})
+generateGraphviz({"A", "B", "C", "D", "E", "F", "G", "H"})

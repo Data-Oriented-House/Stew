@@ -15,7 +15,7 @@ end
 
 local stew = require 'src/init'
 
-local PN = 2 ^ 11 -- 2048
+local PN = 2 ^ 15 -- 2048
 
 -- do
 	TITLE(`practical test Stew EC ({PN} entities)`)

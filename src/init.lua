@@ -1,4 +1,6 @@
 --!strict
+--!optimize 2
+--!native
 
 local empty = table.freeze {}
 
@@ -281,7 +283,7 @@ local function getCollectionData(
 	return collectionData
 end
 
-export type CollectionData = typeof(getCollectionData(...))
+type CollectionData = typeof(getCollectionData(...))
 export type Collection = typeof(getCollectionData(...).entities)
 
 local tag = {
@@ -941,7 +943,7 @@ function Stew.world()
 		@tag Do Not Modify
 		@param include { Factory }?
 		@param exclude { Factory }?
-		@return { [Entity]: Components }
+		@return { Entity }
 
 		Gets a set of all entities that have all included components, and do not have any excluded components. (This is the magic sauce of it all!)
 
