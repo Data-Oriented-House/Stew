@@ -15,7 +15,7 @@ end
 
 local stew = require 'src/init'
 
-local PN = 2 ^ 15 -- 2048
+local PN = 2 ^ 11 -- 2048
 
 -- do
 TITLE(`practical test Stew EC ({PN} entities)`)
@@ -59,7 +59,7 @@ end)
 
 BENCH('create entities with 3 components', function()
 	for i = 1, PN do
-		local id = world.entity()
+		local id = stew.entity()
 		Position.add(id, i)
 		Velocity.add(id, i)
 		Health.add(id, 0)
@@ -95,7 +95,7 @@ end)
 
 BENCH('create entities with 3 components (cached)', function()
 	for i = 1, PN do
-		local id = world.entity()
+		local id = stew.entity()
 		Position.add(id, i)
 		Velocity.add(id, i)
 		Health.add(id, 0)

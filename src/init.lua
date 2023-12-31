@@ -4,27 +4,26 @@
 
 local DEBUG = false
 
-local empty = table.freeze {}
-
-local function toPackedString(x: number)
-	return ''
-end
-
---[=[
-	@class Stew
-]=]
-local Stew = {}
-
 export type Components = { [Factory<any, any, any, ...any, ...any>]: any }
+
 export type EntityData = Components
+
 export type Add<D, E, C, A..., R...> = (factory: Factory<D, E, C, A..., R...>, entity: E, A...) -> C
+
 export type Remove<D, E, C, A..., R...> = (factory: Factory<D, E, C, A..., R...>, entity: E, component: C, R...) -> ()
+
 export type Archetype<D, E, C, A..., R...> = {
 	create: Add<D, E, C, A..., R...>,
 	delete: Remove<D, E, C, A..., R...>?,
 	id: string,
 	factory: Factory<D, E, C, A..., R...>,
 }
+
+type FactoryArgs<D, E, C, A..., R...> = {
+	add: (Factory<D, E, C, A..., R...>, entity: E, A...) -> C,
+	remove: (Factory<D, E, C, A..., R...>, entity: E, component: C, R...) -> ()?,
+} & D
+
 export type Factory<D, E, C, A..., R...> = {
 	add: (entity: E, A...) -> C,
 	remove: (entity: E, R...) -> (),
@@ -33,10 +32,7 @@ export type Factory<D, E, C, A..., R...> = {
 	get: (entity: E) -> C?,
 } & D
 
-type FactoryArgs<D, E, C, A..., R...> = {
-	add: (Factory<D, E, C, A..., R...>, entity: E, A...) -> C,
-	remove: (Factory<D, E, C, A..., R...>, entity: E, component: C, R...) -> ()?,
-} & D
+export type Tag<D> = Factory<D, any, boolean, (), ()>
 
 type WorldArgs<W> = {
 	built: <D, E, C, A..., R...>(world: World<W>, archetype: Archetype<D, E, C, A..., R...>) -> ()?,
@@ -84,7 +80,7 @@ export type World<W> = {
 	) -> ()?,
 
 	factory: <D, E, C, A..., R...>(factoryArgs: FactoryArgs<D, E, C, A..., R...>) -> Factory<D, E, C, A..., R...>,
-	tag: <D>(D) -> Factory<D, boolean, any, (), ()>,
+	tag: <D>(D) -> Tag<D>,
 	kill: (entity: any) -> (),
 	get: (entity: any) -> Components,
 	query: (
@@ -92,6 +88,67 @@ export type World<W> = {
 		exclude: { Factory<any, any, any, ...any, ...any> }?
 	) -> Collection,
 } & W
+
+local empty = table.freeze {}
+
+local function toPackedString(x: number)
+	local bytes = math.ceil(math.log(x + 1, 256))
+	local str = if bytes <= 1
+		then string.char(x)
+		elseif bytes == 2 then string.char(x % 256, x // 256 % 256)
+		elseif bytes == 3 then string.char(x // 256 ^ 0 % 256, x // 256 ^ 1 % 256, x // 256 ^ 2 % 256)
+		elseif bytes == 4 then string.char(
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256
+		)
+		elseif bytes == 5 then string.char(
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256
+		)
+		elseif bytes == 6 then string.char(
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256,
+			x // 256 ^ 5 % 256
+		)
+		elseif bytes == 7 then string.char(
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256,
+			x // 256 ^ 5 % 256,
+			x // 256 ^ 6 % 256
+		)
+		else string.char(
+			x // 256 ^ 0 % 256,
+			x // 256 ^ 1 % 256,
+			x // 256 ^ 2 % 256,
+			x // 256 ^ 3 % 256,
+			x // 256 ^ 4 % 256,
+			x // 256 ^ 5 % 256,
+			x // 256 ^ 6 % 256,
+			x // 256 ^ 7 % 256
+		)
+
+	if DEBUG then
+		print('nextId', ' = last ' .. x, 'str ' .. str)
+	end
+
+	return str
+end
+
+--[=[
+	@class Stew
+]=]
+local Stew = {}
 
 local function iter(world: any)
 	return function(collection: Collection)
@@ -219,6 +276,7 @@ export type Collection = typeof(getCollectionData(...).entities)
 local function tagAdd(factory, entity: any)
 	return true
 end
+
 local function register<W>(world: World<W>, entity: any)
 	if DEBUG then
 		assert(not world._entityToData[entity], 'Attempting to register entity twice')
@@ -330,11 +388,11 @@ end
 --[=[
 	@within Stew
 	@interface World
-	. added (factory: Factory, entity: any, component: any)?
-	. removed (factory: Factory, entity: any, component: any)?
-	. spawned (entity: any) -> ()?
-	. killed (entity: any) -> ()?
-	. built (archetype: Archetype) -> ()?
+	. added (world: Worldfactory: Factory, entity: any, component: any)?
+	. removed (world: Wo, rldfactory: Factory, entity: any, component: any)?
+	. spawned (world: Worl, dentity: any) -> ()?
+	. killed (world: World, entity: any) -> ()?
+	. built (world: World, archetype: Archetype) -> ()?
 ]=]
 
 Stew._nextWorldId = -1
@@ -497,10 +555,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		function body:removed(entity: Instance, component: Model) end
 		```
 	]=]
-	function world.factory<D, E, C, A..., R...>(factoryArgs: {
-		add: (Factory<D, E, C, A..., R...>, entity: E, A...) -> C,
-		remove: (Factory<D, E, C, A..., R...>, entity: E, component: C, R...) -> (),
-	} & D)
+	function world.factory<D, E, C, A..., R...>(factoryArgs: FactoryArgs<D, E, C, A..., R...>)
 		--[=[
 			@class Factory
 
@@ -722,7 +777,8 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		newTag.add = tagAdd
 		newTag.remove = nil
 
-		return world.factory(newTag) :: Factory<D, any, true, (), ()>
+		local a = world.factory(newTag) :: Tag<D>
+		return a
 	end
 
 	--[=[
@@ -744,11 +800,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 	]=]
 	function world.kill(entity: any)
 		if DEBUG then
-			print(
-				'world.entity',
-				if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity,
-				'w' .. world._id
-			)
+			print('world.entity', if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity, 'w' .. world._id)
 		end
 
 		local entityData = world._entityToData[entity]
@@ -936,5 +988,13 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 
 	return world
 end
+
+local a = Stew.world {}
+
+local t = a.tag {
+	id = 7
+}
+
+t.add(5)
 
 return Stew
