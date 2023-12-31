@@ -22,7 +22,9 @@ TITLE(`practical test Stew EC ({PN} entities)`)
 
 local world
 BENCH('create world', function()
-	world = stew.world {}
+	world = stew.world {
+		version = 1,
+	}
 end)
 
 local Position, Velocity, Health, Dead

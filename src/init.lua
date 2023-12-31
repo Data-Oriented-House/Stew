@@ -243,7 +243,8 @@ local function getCollectionData(
 	end
 
 	local indices = {}
-	local entities = setmetatable({} :: { any }, world._queryMeta)
+	local entities =
+		setmetatable({}, world._queryMeta :: { __iter: (collection: Collection) -> () -> (any, EntityData) })
 	local collectionData = {
 		entities = entities,
 		indices = indices,
@@ -270,8 +271,17 @@ local function getCollectionData(
 	return collectionData
 end
 
-type CollectionData = typeof(getCollectionData(...))
-export type Collection = typeof(getCollectionData(...).entities)
+type CollectionData = typeof({
+	entities = setmetatable({} :: { any }, {} :: { __iter: (collection: Collection) -> () -> (any, EntityData) }),
+	indices = {} :: { [any]: number },
+	include = nil :: { Factory<any, any, any, ...any, ...any> }?,
+	exclude = nil :: { Factory<any, any, any, ...any, ...any> }?,
+})
+
+export type Collection = typeof(setmetatable(
+	{} :: { any },
+	{} :: { __iter: (collection: Collection) -> () -> (any, EntityData) }
+))
 
 local function tagAdd(factory, entity: any)
 	return true
@@ -988,13 +998,5 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 
 	return world
 end
-
-local a = Stew.world {}
-
-local t = a.tag {
-	id = 7
-}
-
-t.add(5)
 
 return Stew
