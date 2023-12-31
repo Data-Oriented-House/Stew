@@ -96,7 +96,7 @@ local function toPackedString(x: number)
 	local str = if bytes <= 1
 		then string.char(x)
 		elseif bytes == 2 then string.char(x % 256, x // 256 % 256)
-		elseif bytes == 3 then string.char(x // 256 ^ 0 % 256, x // 256 ^ 1 % 256, x // 256 ^ 2 % 256)
+		elseif bytes == 3 then string.char(x % 256, x // 256 % 256, x // 256 ^ 2 % 256)
 		elseif bytes == 4 then string.char(
 			x // 256 ^ 0 % 256,
 			x // 256 ^ 1 % 256,
