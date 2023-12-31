@@ -13,6 +13,9 @@ classOrder = [
 enabled = true
 includeReadme = false
 
+[navbar.logo]
+src = "/favicon.ico"
+
 [[home.features]]
 title = "Mutual Respect"
 description = "Stew understands that you need to get things done your way and quickly. It offers a simple API that is unintrusive, easy to learn and use, and still flexible enough for any use case."
