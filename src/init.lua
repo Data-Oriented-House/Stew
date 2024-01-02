@@ -53,6 +53,7 @@ type WorldArgs<W> = {
 } & W
 
 export type World<W> = {
+	_nextEntityId: number,
 	_nextFactoryId: number,
 	_factoryToData: { [Factory<any, any, any, ...any, ...any>]: Archetype<any, any, any, ...any, ...any> },
 	_entityToData: { [any]: EntityData },
@@ -61,7 +62,7 @@ export type World<W> = {
 	},
 	_universalCollection: CollectionData,
 	_queryMeta: { __iter: (collection: Collection) -> () -> (any, EntityData) },
-	_id: number,
+	_id: string,
 
 	built: <D, E, C, A..., R...>(world: World<W>, archetype: Archetype<D, E, C, A..., R...>) -> ()?,
 	spawned: (world: World<W>, entity: any) -> ()?,
@@ -81,6 +82,7 @@ export type World<W> = {
 
 	factory: <D, E, C, A..., R...>(factoryArgs: FactoryArgs<D, E, C, A..., R...>) -> Factory<D, E, C, A..., R...>,
 	tag: <D>(D) -> Tag<D>,
+	entity: () -> string,
 	kill: (entity: any) -> (),
 	get: (entity: any) -> Components,
 	query: (
@@ -149,6 +151,50 @@ end
 	@class Stew
 ]=]
 local Stew = {}
+
+--[=[
+	@within Stew
+
+	A function to extract the unique entity and world ids encoded in World.entity() strings.
+
+	Only works if there are less than 256 worlds. (This is reasonable right?)
+
+	```lua
+	local Stew = require(path.to.Stew)
+
+	local w0 = Stew.world()
+	local e00 = w0.entity()
+	local e10 = w0.entity()
+	local e20 = w0.entity()
+
+	print(Stew.tonumber(e00)) -- 0, 0
+	print(Stew.tonumber(e10)) -- 1, 0
+	print(Stew.tonumber(e20)) -- 2, 0
+
+	local w1 = Stew.world()
+
+	local e01 = w1.entity()
+	local e11 = w1.entity()
+	local e21 = w1.entity()
+
+	print(Stew.tonumber(e01)) -- 0, 1
+	print(Stew.tonumber(e11)) -- 1, 1
+	print(Stew.tonumber(e21)) -- 2, 1
+	```
+]=]
+function Stew.tonumber(entity: string)
+	-- Please don't make 256 or more worlds
+	local world, a, b, c, d, e, f, g, h = string.byte(entity, 1, 9)
+	local id = (h or 0) * 256 ^ 7
+		+ (g or 0) * 256 ^ 6
+		+ (f or 0) * 256 ^ 5
+		+ (e or 0) * 256 ^ 4
+		+ (d or 0) * 256 ^ 3
+		+ (c or 0) * 256 ^ 2
+		+ (b or 0) * 256
+		+ a
+	return id, world
+end
 
 local function iter(world: any)
 	return function(collection: Collection)
@@ -406,39 +452,6 @@ end
 ]=]
 
 Stew._nextWorldId = -1
-Stew._nextEntityId = -1
-
---[=[
-	@within Stew
-	@return number
-
-	Creates an arbitrary entity. Keep in mind, in Stew, *anything* can be an Entity (except nil). If you don't have a pre-existing object to use as an entity, this will create a unique-across-worlds identifier you can use.
-
-	Can be sent over remotes and is unique across worlds!
-
-	```lua
-	local Stew = require(path.to.Stew)
-	local Move = require(path.to.move.factory)
-	local Chase = require(path.to.chase.factory)
-	local Model = require(path.to.model.factory)
-
-	local enemy = Stew.entity()
-	Model.add(enemy)
-	Move.add(enemy)
-	Chase.add(enemy)
-
-	-- continues to below example
-	```
-]=]
-function Stew.entity()
-	Stew._nextEntityId += 1
-
-	if DEBUG then
-		print('world.entity', 'e' .. Stew._nextEntityId)
-	end
-
-	return Stew._nextEntityId
-end
 
 --[=[
 	@within Stew
@@ -478,12 +491,13 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 	]=]
 	local world = worldArgs :: World<W>
 	world._nextFactoryId = -1
+	world._nextEntityId = -1
 	world._factoryToData = {}
 	world._entityToData = {}
 	world._signatureToCollection = {}
 
 	Stew._nextWorldId += 1
-	world._id = Stew._nextWorldId
+	world._id = toPackedString(Stew._nextWorldId)
 	world._queryMeta = { __iter = iter(world) }
 	world._universalCollection = {
 		entities = setmetatable({} :: { any }, world._queryMeta),
@@ -789,6 +803,38 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 
 		local a = world.factory(newTag) :: Tag<D>
 		return a
+	end
+
+	--[=[
+		@within World
+		@return string
+
+		Creates an arbitrary entity. Keep in mind, in Stew, *anything* can be an Entity (except nil). If you don't have a pre-existing object to use as an entity, this will create a unique-across-worlds identifier you can use.
+
+		Can be sent over remotes and is unique across worlds!
+
+		```lua
+		local World = require(path.to.World)
+		local Move = require(path.to.move.factory)
+		local Chase = require(path.to.chase.factory)
+		local Model = require(path.to.model.factory)
+
+		local enemy = World.entity()
+		Model.add(enemy)
+		Move.add(enemy)
+		Chase.add(enemy)
+
+		-- continues to below example
+		```
+	]=]
+	function world.entity()
+		world._nextEntityId += 1
+
+		if DEBUG then
+			print('world.entity', 'e' .. world._nextEntityId)
+		end
+
+		return world._id .. toPackedString(world._nextEntityId)
 	end
 
 	--[=[
