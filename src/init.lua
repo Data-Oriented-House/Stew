@@ -62,7 +62,6 @@ export type World<W> = {
 	},
 	_universalCollection: CollectionData,
 	_queryMeta: { __iter: (collection: Collection) -> () -> (any, EntityData) },
-	_id: string,
 
 	built: <D, E, C, A..., R...>(world: World<W>, archetype: Archetype<D, E, C, A..., R...>) -> ()?,
 	spawned: (world: World<W>, entity: any) -> ()?,
@@ -151,50 +150,6 @@ end
 	@class Stew
 ]=]
 local Stew = {}
-
---[=[
-	@within Stew
-
-	A function to extract the unique entity and world ids encoded in World.entity() strings.
-
-	Only works if there are less than 256 worlds. (This is reasonable right?)
-
-	```lua
-	local Stew = require(path.to.Stew)
-
-	local w0 = Stew.world()
-	local e00 = w0.entity()
-	local e10 = w0.entity()
-	local e20 = w0.entity()
-
-	print(Stew.tonumber(e00)) -- 0, 0
-	print(Stew.tonumber(e10)) -- 1, 0
-	print(Stew.tonumber(e20)) -- 2, 0
-
-	local w1 = Stew.world()
-
-	local e01 = w1.entity()
-	local e11 = w1.entity()
-	local e21 = w1.entity()
-
-	print(Stew.tonumber(e01)) -- 0, 1
-	print(Stew.tonumber(e11)) -- 1, 1
-	print(Stew.tonumber(e21)) -- 2, 1
-	```
-]=]
-function Stew.tonumber(entity: string)
-	-- Please don't make 256 or more worlds
-	local world, a, b, c, d, e, f, g, h = string.byte(entity, 1, 9)
-	local id = (h or 0) * 256 ^ 7
-		+ (g or 0) * 256 ^ 6
-		+ (f or 0) * 256 ^ 5
-		+ (e or 0) * 256 ^ 4
-		+ (d or 0) * 256 ^ 3
-		+ (c or 0) * 256 ^ 2
-		+ (b or 0) * 256
-		+ a
-	return id, world
-end
 
 local function iter(world: any)
 	return function(collection: Collection)
@@ -451,8 +406,6 @@ end
 	. built (world: World, archetype: Archetype) -> ()?
 ]=]
 
-Stew._nextWorldId = -1
-
 --[=[
 	@within Stew
 	@return World
@@ -496,8 +449,6 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 	world._entityToData = {}
 	world._signatureToCollection = {}
 
-	Stew._nextWorldId += 1
-	world._id = toPackedString(Stew._nextWorldId)
 	world._queryMeta = { __iter = iter(world) }
 	world._universalCollection = {
 		entities = setmetatable({} :: { any }, world._queryMeta),
@@ -505,7 +456,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 	}
 
 	if DEBUG then
-		print('Stew.world', '= w' .. world._id)
+		print('Stew.world')
 	end
 
 	--[=[
@@ -597,7 +548,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		}
 
 		if DEBUG then
-			print('world.factory', 'w' .. world._id, 'f' .. archetype.id)
+			print('world.factory', 'f' .. archetype.id)
 		end
 
 		--[=[
@@ -630,7 +581,6 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 			if DEBUG then
 				print(
 					'factory.add',
-					'w' .. world._id,
 					'f' .. archetype.id,
 					if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity,
 					'args',
@@ -689,7 +639,6 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 			if DEBUG then
 				print(
 					'factory.remove',
-					'w' .. world._id,
 					'f' .. archetype.id,
 					if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity,
 					'args',
@@ -757,7 +706,6 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 			if DEBUG then
 				print(
 					'factory.get',
-					'w' .. world._id,
 					'f' .. archetype.id,
 					if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity
 				)
@@ -856,7 +804,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 	]=]
 	function world.kill(entity: any)
 		if DEBUG then
-			print('world.entity', if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity, 'w' .. world._id)
+			print('world.entity', if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity)
 		end
 
 		local entityData = world._entityToData[entity]
@@ -950,7 +898,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 	]=]
 	function world.get(entity: any): Components
 		if DEBUG then
-			print('world.entity', if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity, 'w' .. world._id)
+			print('world.entity', if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity)
 		end
 
 		return world._entityToData[entity] or empty
