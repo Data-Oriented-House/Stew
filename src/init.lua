@@ -82,7 +82,7 @@ export type World<W> = {
 
 	factory: <D, E, C, A..., R...>(factoryArgs: FactoryArgs<D, E, C, A..., R...>) -> Factory<D, E, C, A..., R...>,
 	tag: <D>(D) -> Tag<D>,
-	entity: () -> string,
+	entity: () -> number,
 	kill: (entity: any) -> (),
 	get: (entity: any) -> Components,
 	query: (
@@ -445,8 +445,8 @@ end
 	@within Stew
 	@interface World
 	. added (world: Worldfactory: Factory, entity: any, component: any)?
-	. removed (world: Wo, rldfactory: Factory, entity: any, component: any)?
-	. spawned (world: Worl, dentity: any) -> ()?
+	. removed (world: World, factory: Factory, entity: any, component: any)?
+	. spawned (world: World, dentity: any) -> ()?
 	. killed (world: World, entity: any) -> ()?
 	. built (world: World, archetype: Archetype) -> ()?
 ]=]
@@ -807,11 +807,11 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 
 	--[=[
 		@within World
-		@return string
+		@return number
 
 		Creates an arbitrary entity. Keep in mind, in Stew, *anything* can be an Entity (except nil). If you don't have a pre-existing object to use as an entity, this will create a unique-across-worlds identifier you can use.
 
-		Can be sent over remotes and is unique across worlds!
+		Can be sent over remotes, though not unique across worlds. Consider attaching distinguishing information if using in other worlds.
 
 		```lua
 		local World = require(path.to.World)
@@ -834,7 +834,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 			print('world.entity', 'e' .. world._nextEntityId)
 		end
 
-		return world._id .. toPackedString(world._nextEntityId)
+		return world._nextEntityId
 	end
 
 	--[=[
