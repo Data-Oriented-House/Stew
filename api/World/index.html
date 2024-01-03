@@ -10,8 +10,8 @@
 
 &quot;Oh what a wonderful world!&quot; - Louis Armstrong
 	"><link data-rh="true" rel="icon" href="/Stew/favicon.ico"><link data-rh="true" rel="canonical" href="https://data-oriented-house.github.io/Stew/api/World"><link data-rh="true" rel="alternate" href="https://data-oriented-house.github.io/Stew/api/World" hreflang="en"><link data-rh="true" rel="alternate" href="https://data-oriented-house.github.io/Stew/api/World" hreflang="x-default"><link rel="stylesheet" href="/Stew/assets/css/styles.e1adec2f.css">
-<link rel="preload" href="/Stew/assets/js/runtime~main.69a388c3.js" as="script">
-<link rel="preload" href="/Stew/assets/js/main.63f41246.js" as="script">
+<link rel="preload" href="/Stew/assets/js/runtime~main.364baa0b.js" as="script">
+<link rel="preload" href="/Stew/assets/js/main.e18bcd7e.js" as="script">
 </head>
 <body class="navigation-with-keyboard">
 <script>!function(){function e(e){document.documentElement.setAttribute("data-theme",e)}var t=function(){var e=null;try{e=localStorage.getItem("theme")}catch(e){}return e}();null!==t?e(t):window.matchMedia("(prefers-color-scheme: dark)").matches?e("dark"):(window.matchMedia("(prefers-color-scheme: light)").matches,e("light"))}()</script><div id="__docusaurus">
@@ -74,9 +74,9 @@ body<span class="token punctuation">.</span><span class="token function">remove<
 
 <span class="token keyword">local</span> allHappyPoisonedSleepers <span class="token operator">=</span> world<span class="token punctuation">.</span><span class="token function">query</span> <span class="token punctuation">{</span> happy<span class="token punctuation">,</span> poisoned<span class="token punctuation">,</span> sleeping <span class="token punctuation">}</span>
 </code></pre>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorWithStickyNavbar_LWe7" id="entity"><code style="text-decoration:none">entity</code><a href="#entity" class="hash-link" aria-label="Direct link to entity" title="Direct link to entity">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/data-oriented-house/Stew/blob/main/src/init.lua#L780"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>World<!-- -->.</code><code class="green_DgR4">entity</code><code>(</code><code>) → </code><code class="blue_P4bS">string</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorWithStickyNavbar_LWe7" id="entity"><code style="text-decoration:none">entity</code><a href="#entity" class="hash-link" aria-label="Direct link to entity" title="Direct link to entity">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/data-oriented-house/Stew/blob/main/src/init.lua#L780"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>World<!-- -->.</code><code class="green_DgR4">entity</code><code>(</code><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>Creates an arbitrary entity. Keep in mind, in Stew, <em>anything</em> can be an Entity (except nil). If you don't have a pre-existing object to use as an entity, this will create a unique-across-worlds identifier you can use.</p>
-<p>Can be sent over remotes and is unique across worlds!</p>
+<p>Can be sent over remotes, though not unique across worlds. Consider attaching distinguishing information if using in other worlds.</p>
 <pre class="language-lua"><code class="language-lua"><span class="token keyword">local</span> World <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span>path<span class="token punctuation">.</span>to<span class="token punctuation">.</span>World<span class="token punctuation">)</span>
 <span class="token keyword">local</span> Move <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span>path<span class="token punctuation">.</span>to<span class="token punctuation">.</span>move<span class="token punctuation">.</span>factory<span class="token punctuation">)</span>
 <span class="token keyword">local</span> Chase <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span>path<span class="token punctuation">.</span>to<span class="token punctuation">.</span>chase<span class="token punctuation">.</span>factory<span class="token punctuation">)</span>
@@ -219,12 +219,12 @@ RunService<span class="token punctuation">.</span>RenderStepped<span class="toke
         },
         {
             &quot;name&quot;: &quot;entity&quot;,
-            &quot;desc&quot;: &quot;Creates an arbitrary entity. Keep in mind, in Stew, *anything* can be an Entity (except nil). If you don&#x27;t have a pre-existing object to use as an entity, this will create a unique-across-worlds identifier you can use.\n\nCan be sent over remotes and is unique across worlds!\n\n```lua\nlocal World = require(path.to.World)\nlocal Move = require(path.to.move.factory)\nlocal Chase = require(path.to.chase.factory)\nlocal Model = require(path.to.model.factory)\n\nlocal enemy = World.entity()\nModel.add(enemy)\nMove.add(enemy)\nChase.add(enemy)\n\n-- continues to below example\n```\n\t&quot;,
+            &quot;desc&quot;: &quot;Creates an arbitrary entity. Keep in mind, in Stew, *anything* can be an Entity (except nil). If you don&#x27;t have a pre-existing object to use as an entity, this will create a unique-across-worlds identifier you can use.\n\nCan be sent over remotes, though not unique across worlds. Consider attaching distinguishing information if using in other worlds.\n\n```lua\nlocal World = require(path.to.World)\nlocal Move = require(path.to.move.factory)\nlocal Chase = require(path.to.chase.factory)\nlocal Model = require(path.to.model.factory)\n\nlocal enemy = World.entity()\nModel.add(enemy)\nMove.add(enemy)\nChase.add(enemy)\n\n-- continues to below example\n```\n\t&quot;,
             &quot;params&quot;: [],
             &quot;returns&quot;: [
                 {
                     &quot;desc&quot;: &quot;&quot;,
-                    &quot;lua_type&quot;: &quot;string&quot;
+                    &quot;lua_type&quot;: &quot;number&quot;
                 }
             ],
             &quot;function_type&quot;: &quot;static&quot;,
@@ -420,7 +420,7 @@ RunService<span class="token punctuation">.</span>RenderStepped<span class="toke
         &quot;path&quot;: &quot;src/init.lua&quot;
     }
 }</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#types" class="table-of-contents__link toc-highlight">Types</a><ul><li><a href="#Archetype" class="table-of-contents__link toc-highlight">Archetype</a></li><li><a href="#Components" class="table-of-contents__link toc-highlight">Components</a></li><li><a href="#Factory" class="table-of-contents__link toc-highlight">Factory</a></li><li><a href="#FactoryArgs" class="table-of-contents__link toc-highlight">FactoryArgs</a></li></ul></li><li><a href="#properties" class="table-of-contents__link toc-highlight">Properties</a></li><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#entity" class="table-of-contents__link toc-highlight">.entity</a></li><li><a href="#factory" class="table-of-contents__link toc-highlight">.factory</a></li><li><a href="#get" class="table-of-contents__link toc-highlight">.get</a></li><li><a href="#kill" class="table-of-contents__link toc-highlight">.kill</a></li><li><a href="#query" class="table-of-contents__link toc-highlight">.query</a></li><li><a href="#tag" class="table-of-contents__link toc-highlight">.tag</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2023 SolarScuffle-Bot. Built with Moonwave and Docusaurus</div></div></div></footer></div>
-<script src="/Stew/assets/js/runtime~main.69a388c3.js"></script>
-<script src="/Stew/assets/js/main.63f41246.js"></script>
+<script src="/Stew/assets/js/runtime~main.364baa0b.js"></script>
+<script src="/Stew/assets/js/main.e18bcd7e.js"></script>
 </body>
 </html>
