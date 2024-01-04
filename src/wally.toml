@@ -1,6 +1,6 @@
 [package]
 name = "data-oriented-house/stew"
-version = "5.3.1"
+version = "5.3.2"
 registry = "https://github.com/UpliftGames/wally-index"
 licence = "MIT"
 authors = ["Sona"]
