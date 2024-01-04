@@ -4,7 +4,7 @@
 
 local DEBUG = false
 
-export type Components = { [Factory<any, any, any, ...any, ...any>]: any }
+export type Components = { [Factory<any, any, any, ...any, ...any>]: any? }
 
 export type EntityData = Components
 
@@ -592,7 +592,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 			if not entityData then
 				entityData = register(world, entity)
 			elseif entityData[factory] then
-				return entityData[factory]
+				return entityData[factory] :: C
 			end
 
 			local component = archetype.create(factory, entity, ...)
