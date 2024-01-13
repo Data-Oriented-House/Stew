@@ -4,49 +4,49 @@
 
 local DEBUG = false
 
-export type Components = { [Factory<any, any, any, ...any, ...any>]: any? }
+export type Components = { [Factory<any, any, any, ...any>]: any? }
 
 export type EntityData = Components
 
-export type Add<D, E, C, A..., R...> = (factory: Factory<D, E, C, A..., R...>, entity: E, A...) -> C
+export type Add<D, E, C, A...> = (factory: Factory<D, E, C, A...>, entity: E, A...) -> C
 
-export type Remove<D, E, C, A..., R...> = (factory: Factory<D, E, C, A..., R...>, entity: E, component: C, R...) -> ()
+export type Remove<D, E, C, A...> = (factory: Factory<D, E, C, A...>, entity: E, component: C) -> ()
 
-export type Archetype<D, E, C, A..., R...> = {
-	create: Add<D, E, C, A..., R...>,
-	delete: Remove<D, E, C, A..., R...>?,
+export type Archetype<D, E, C, A...> = {
+	create: Add<D, E, C, A...>,
+	delete: Remove<D, E, C, A...>?,
 	id: string,
-	factory: Factory<D, E, C, A..., R...>,
+	factory: Factory<D, E, C, A...>,
 }
 
-type FactoryArgs<D, E, C, A..., R...> = {
-	add: (Factory<D, E, C, A..., R...>, entity: E, A...) -> C,
-	remove: (Factory<D, E, C, A..., R...>, entity: E, component: C, R...) -> ()?,
+type FactoryArgs<D, E, C, A...> = {
+	add: (Factory<D, E, C, A...>, entity: E, A...) -> C,
+	remove: (Factory<D, E, C, A...>, entity: E, component: C) -> ()?,
 } & D
 
-export type Factory<D, E, C, A..., R...> = {
+export type Factory<D, E, C, A...> = {
 	add: (entity: E, A...) -> C,
-	remove: (entity: E, R...) -> (),
-	added: (factory: Factory<D, E, C, A..., R...>, entity: E, component: C) -> ()?,
-	removed: (factory: Factory<D, E, C, A..., R...>, entity: E, component: C) -> ()?,
+	remove: (entity: E) -> (),
+	added: (factory: Factory<D, E, C, A...>, entity: E, component: C) -> ()?,
+	removed: (factory: Factory<D, E, C, A...>, entity: E, component: C) -> ()?,
 	get: (entity: E) -> C?,
 } & D
 
-export type Tag<D> = Factory<D, any, boolean, (), ()>
+export type Tag<D> = Factory<D, any, boolean, ()>
 
 type WorldArgs<W> = {
-	built: <D, E, C, A..., R...>(world: World<W>, archetype: Archetype<D, E, C, A..., R...>) -> ()?,
+	built: <D, E, C, A...>(world: World<W>, archetype: Archetype<D, E, C, A...>) -> ()?,
 	spawned: (world: World<W>, entity: any) -> ()?,
 	killed: (world: World<W>, entity: any) -> ()?,
-	added: <D, E, C, A..., R...>(
+	added: <D, E, C, A...>(
 		world: World<W>,
-		factory: Factory<D, E, C, A..., R...>,
+		factory: Factory<D, E, C, A...>,
 		entity: E,
 		component: C
 	) -> ()?,
-	removed: <D, E, C, A..., R...>(
+	removed: <D, E, C, A...>(
 		world: World<W>,
-		factory: Factory<D, E, C, A..., R...>,
+		factory: Factory<D, E, C, A...>,
 		entity: E,
 		component: C
 	) -> ()?,
@@ -55,7 +55,7 @@ type WorldArgs<W> = {
 export type World<W> = {
 	_nextEntityId: number,
 	_nextFactoryId: number,
-	_factoryToData: { [Factory<any, any, any, ...any, ...any>]: Archetype<any, any, any, ...any, ...any> },
+	_factoryToData: { [Factory<any, any, any, ...any>]: Archetype<any, any, any, ...any> },
 	_entityToData: { [any]: EntityData },
 	_signatureToCollection: {
 		[string]: CollectionData,
@@ -63,30 +63,30 @@ export type World<W> = {
 	_universalCollection: CollectionData,
 	_queryMeta: { __iter: (collection: Collection) -> () -> (any, EntityData) },
 
-	built: <D, E, C, A..., R...>(world: World<W>, archetype: Archetype<D, E, C, A..., R...>) -> ()?,
+	built: <D, E, C, A...>(world: World<W>, archetype: Archetype<D, E, C, A...>) -> ()?,
 	spawned: (world: World<W>, entity: any) -> ()?,
 	killed: (world: World<W>, entity: any) -> ()?,
-	added: <D, E, C, A..., R...>(
+	added: <D, E, C, A...>(
 		world: World<W>,
-		factory: Factory<D, E, C, A..., R...>,
+		factory: Factory<D, E, C, A...>,
 		entity: E,
 		component: C
 	) -> ()?,
-	removed: <D, E, C, A..., R...>(
+	removed: <D, E, C, A...>(
 		world: World<W>,
-		factory: Factory<D, E, C, A..., R...>,
+		factory: Factory<D, E, C, A...>,
 		entity: E,
 		component: C
 	) -> ()?,
 
-	factory: <D, E, C, A..., R...>(factoryArgs: FactoryArgs<D, E, C, A..., R...>) -> Factory<D, E, C, A..., R...>,
+	factory: <D, E, C, A...>(factoryArgs: FactoryArgs<D, E, C, A...>) -> Factory<D, E, C, A...>,
 	tag: <D>(D) -> Tag<D>,
 	entity: () -> number,
 	kill: (entity: any) -> (),
 	get: (entity: any) -> Components,
 	query: (
-		include: { Factory<any, any, any, ...any, ...any> }?,
-		exclude: { Factory<any, any, any, ...any, ...any> }?
+		include: { Factory<any, any, any, ...any> }?,
+		exclude: { Factory<any, any, any, ...any> }?
 	) -> Collection,
 } & W
 
@@ -169,7 +169,7 @@ local function iter(world: any)
 	end
 end
 
-local function hasAll(entityData: EntityData, factories: { Factory<any, any, any, ...any, ...any> })
+local function hasAll(entityData: EntityData, factories: { Factory<any, any, any, ...any> })
 	for _, factory in factories do
 		if entityData[factory] == nil then
 			return false
@@ -179,7 +179,7 @@ local function hasAll(entityData: EntityData, factories: { Factory<any, any, any
 	return true
 end
 
-local function hasAny(entityData: EntityData, factories: { Factory<any, any, any, ...any, ...any> })
+local function hasAny(entityData: EntityData, factories: { Factory<any, any, any, ...any> })
 	for _, factory in factories do
 		if entityData[factory] ~= nil then
 			return true
@@ -192,8 +192,8 @@ end
 local hashIds = {}
 local function hash(
 	world: any,
-	include: { Factory<any, any, any, ...any, ...any> }?,
-	exclude: { Factory<any, any, any, ...any, ...any> }?
+	include: { Factory<any, any, any, ...any> }?,
+	exclude: { Factory<any, any, any, ...any> }?
 )
 	table.clear(hashIds)
 	if include and include[1] ~= nil then
@@ -224,8 +224,8 @@ end
 
 local function getCollectionData(
 	world: any,
-	include: { Factory<any, any, any, ...any, ...any> }?,
-	exclude: { Factory<any, any, any, ...any, ...any> }?
+	include: { Factory<any, any, any, ...any> }?,
+	exclude: { Factory<any, any, any, ...any> }?
 )
 	local signature = hash(world, include, exclude)
 	if signature == '' then
@@ -275,8 +275,8 @@ end
 type CollectionData = typeof({
 	entities = setmetatable({} :: { any }, {} :: { __iter: (collection: Collection) -> () -> (any, EntityData) }),
 	indices = {} :: { [any]: number },
-	include = nil :: { Factory<any, any, any, ...any, ...any> }?,
-	exclude = nil :: { Factory<any, any, any, ...any, ...any> }?,
+	include = nil :: { Factory<any, any, any, ...any> }?,
+	exclude = nil :: { Factory<any, any, any, ...any> }?,
 })
 
 export type Collection = typeof(setmetatable(
@@ -390,9 +390,9 @@ end
 --[=[
 	@within World
 	@interface Archetype
-	.factory Factory<D, E, C, A..., R...>,
+	.factory Factory<D, E, C, A...>,
 	.create (factory, entity: E, A...) -> C,
-	.delete (factory, entity: E, component: C, R...) -> ()
+	.delete (factory, entity: E, component: C) -> ()
 	.signature string,
 ]=]
 
@@ -463,7 +463,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		@within World
 		@interface FactoryArgs
 		.add (factory: Factory, entity: E, A...) -> C
-		.remove (factory: Factory, entity: E, component: C, R...) -> ()?
+		.remove (factory: Factory, entity: E, component: C) -> ()?
 		.[any] any
 	]=]
 
@@ -471,7 +471,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		@within World
 		@interface Factory
 		.add (entity: E, A...) -> C
-		.remove (entity: E, component: C, R...) -> ()
+		.remove (entity: E, component: C) -> ()
 		.get (entity: E),
 		.added (Factory, entity: E, component: C) -> ()?
 		.removed (Factory, entity: E, component: C) -> ()?
@@ -530,13 +530,13 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		function body:removed(entity: Instance, component: Model) end
 		```
 	]=]
-	function world.factory<D, E, C, A..., R...>(factoryArgs: FactoryArgs<D, E, C, A..., R...>)
+	function world.factory<D, E, C, A...>(factoryArgs: FactoryArgs<D, E, C, A...>)
 		--[=[
 			@class Factory
 
 			Factories are little objects responsible for adding and removing their specific type of component from entities. They are also used to access their type of component from entities and queries. They are well, component factories!
 		]=]
-		local factory = (factoryArgs :: any) :: Factory<D, E, C, A..., R...>
+		local factory = (factoryArgs :: any) :: Factory<D, E, C, A...>
 
 		world._nextFactoryId += 1
 
@@ -617,8 +617,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		--[=[
 			@within Factory
 			@param entity any
-			@param ... any
-			@return void?
+			@return ()
 
 			Removes the factory's type of component from the entity. If the entity is unregistered, nothing happens.
 
@@ -635,14 +634,12 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 			Move.remove(entity)
 			```
 		]=]
-		function factory.remove(entity: E, ...: R...)
+		function factory.remove(entity: E)
 			if DEBUG then
 				print(
 					'factory.remove',
 					'f' .. archetype.id,
-					if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity,
-					'args',
-					...
+					if type(entity) == 'string' then 'e' .. ({ entity })[1] else entity
 				)
 			end
 
@@ -657,7 +654,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 			end
 
 			if archetype.delete then
-				archetype.delete(factory, entity, component, ...)
+				archetype.delete(factory, entity, component)
 			end
 
 			entityData[factory] = nil
@@ -830,7 +827,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		for factory, component in entityData do
 			local archetype = world._factoryToData[factory]
 			if archetype.delete then
-				archetype.delete(factory, entity)
+				archetype.delete(factory, entity, component)
 			end
 
 			if factory.removed then
@@ -950,8 +947,8 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		```
 	]=]
 	function world.query(
-		include: { Factory<any, any, any, ...any, ...any> }?,
-		exclude: { Factory<any, any, any, ...any, ...any> }?
+		include: { Factory<any, any, any, ...any> }?,
+		exclude: { Factory<any, any, any, ...any> }?
 	): Collection
 		if DEBUG then
 			local includes = {}
