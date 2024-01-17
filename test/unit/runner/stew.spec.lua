@@ -59,15 +59,15 @@ return function()
 				end).to.throw()
 			end)
 
-			it('should contain all factory methods', function()
+			it('should contain all default factory methods', function()
 				local world = Stew.world {}
 				local tag = world.tag {}
 
 				expect(tag.add).to.be.ok()
 				expect(tag.get).to.be.ok()
 				expect(tag.remove).to.be.ok()
-				expect(tag.added).to.be.ok()
-				expect(tag.removed).to.be.ok()
+				expect(tag.added).never.to.be.ok()
+				expect(tag.removed).never.to.be.ok()
 			end)
 		end)
 	end)
