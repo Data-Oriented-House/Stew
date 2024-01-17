@@ -330,7 +330,7 @@ local function unregister<W>(world: World<W>, entity: any)
 	world._entityToData[entity] = nil
 
 	if world.killed then
-		world.killed(entity)
+		world.killed(world, entity)
 	end
 end
 
