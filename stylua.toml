@@ -1,5 +1,6 @@
 quote_style = "ForceSingle"
 call_parentheses = "None"
+column_width = 140
 
 [sort_requires]
 enabled = true
