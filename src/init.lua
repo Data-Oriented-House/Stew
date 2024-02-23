@@ -686,7 +686,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		]=]
 		function factory.replace(entity: E, ...: A...): C
 			local entityData = world._entityToData[entity]
-			local oldComponent = entityData[factory] :: C
+			local oldComponent = if entityData then (entityData[factory] :: C) else nil
 			if oldComponent then
 				if delete then
 					delete(factory, entity, oldComponent)
@@ -700,7 +700,20 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 				return newComponent
 			end
 
+			if not entityData then
+				entityData = register(world, entity)
+			end
 			entityData[factory] = newComponent
+
+			if not oldComponent then
+				if factory.added then
+					factory.added(factory, entity, newComponent)
+				end
+
+				if world.added then
+					world.added(world, factory, entity, newComponent)
+				end
+			end
 
 			return newComponent
 		end
