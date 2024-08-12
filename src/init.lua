@@ -854,8 +854,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		@within World
 		@return boolean
 
-		Returns true if the entity is unregistered, meaning it has no components. This is useful in cases where
-		components store entities which are assumed to be alive.
+		Returns true if the entity is unregistered, meaning it has no components. This is useful in cases where components store entities which are assumed to be alive.
 
 		```lua
 		local World = require(path.to.World)
