@@ -64,6 +64,7 @@ export type World<W> = {
 	tag: <D>(D) -> Tag<D>,
 	entity: () -> number,
 	kill: (entity: any) -> (),
+	dead: (entity: any) -> boolean,
 	get: (entity: any) -> Components,
 	query: (include: { Factory<any, any, any, ...any> }?, exclude: { Factory<any, any, any, ...any> }?) -> Collection,
 } & W
@@ -847,6 +848,43 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		end
 
 		unregister(world, entity)
+	end
+
+	--[=[
+		@within World
+		@return boolean
+
+		Returns true if the entity is unregistered, meaning it has no components. This is useful in cases where
+		components store entities which are assumed to be alive.
+
+		```lua
+		local World = require(path.to.World)
+		
+		local Round = World.factory{
+			add = function(factory, entity: any, playersInRound: { any })
+				return {
+					entities = playersInRound,
+				}
+			end,
+		}
+
+		local function updateRoundSystem()
+			for entity, components in world.query { Round } do
+				local round = components[Round]
+
+				if World.dead(entity) then
+					-- Some other system killed the entity, make sure to update the round components
+					local index = table.find(round.entities, entity)
+					if index then
+						table.remove(round.entities, index)
+					end
+				end
+			end
+		end
+		```
+	]=]
+	function world.dead(entity: any): boolean
+		return world.get(entity) == empty
 	end
 
 	--[=[
