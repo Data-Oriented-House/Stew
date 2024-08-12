@@ -19,7 +19,7 @@ export type Archetype<D, E, C, A...> = {
 	factory: Factory<D, E, C, A...>,
 }
 
-type FactoryArgs<D, E, C, A...> = {
+export type FactoryArgs<D, E, C, A...> = {
 	add: (Factory<D, E, C, A...>, entity: E, A...) -> C,
 	remove: (Factory<D, E, C, A...>, entity: E, component: C) -> ()?,
 } & D
@@ -35,7 +35,7 @@ export type Factory<D, E, C, A...> = {
 
 export type Tag<D> = Factory<D, any, boolean, ()>
 
-type WorldArgs<W> = {
+export type WorldArgs<W> = {
 	built: <D, E, C, A...>(world: World<W>, archetype: Archetype<D, E, C, A...>) -> ()?,
 	spawned: (world: World<W>, entity: any) -> ()?,
 	killed: (world: World<W>, entity: any) -> ()?,
