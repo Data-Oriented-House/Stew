@@ -884,7 +884,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		```
 	]=]
 	function world.dead(entity: any): boolean
-		return world.get(entity) == empty
+		return not world._entityToData[entity]
 	end
 
 	--[=[
