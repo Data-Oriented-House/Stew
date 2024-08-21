@@ -19,7 +19,7 @@ export type Archetype<D, E, C, A...> = {
 	factory: Factory<D, E, C, A...>,
 }
 
-type FactoryArgs<D, E, C, A...> = {
+export type FactoryArgs<D, E, C, A...> = {
 	add: (Factory<D, E, C, A...>, entity: E, A...) -> C,
 	remove: (Factory<D, E, C, A...>, entity: E, component: C) -> ()?,
 } & D
@@ -35,7 +35,7 @@ export type Factory<D, E, C, A...> = {
 
 export type Tag<D> = Factory<D, any, boolean, ()>
 
-type WorldArgs<W> = {
+export type WorldArgs<W> = {
 	built: <D, E, C, A...>(world: World<W>, archetype: Archetype<D, E, C, A...>) -> ()?,
 	spawned: (world: World<W>, entity: any) -> ()?,
 	killed: (world: World<W>, entity: any) -> ()?,
@@ -64,6 +64,7 @@ export type World<W> = {
 	tag: <D>(D) -> Tag<D>,
 	entity: () -> number,
 	kill: (entity: any) -> (),
+	dead: (entity: any) -> boolean,
 	get: (entity: any) -> Components,
 	query: (include: { Factory<any, any, any, ...any> }?, exclude: { Factory<any, any, any, ...any> }?) -> Collection,
 } & W
@@ -267,7 +268,7 @@ local function register<W>(world: World<W>, entity: any)
 	universal.indices[entity] = index
 
 	if world.spawned then
-		world.spawned(entity)
+		world.spawned(world, entity)
 	end
 
 	return entityData
@@ -686,7 +687,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		]=]
 		function factory.replace(entity: E, ...: A...): C
 			local entityData = world._entityToData[entity]
-			local oldComponent = if entityData then (entityData[factory] :: C) else nil
+			local oldComponent = if entityData then entityData[factory] :: C else nil
 			if oldComponent then
 				if delete then
 					delete(factory, entity, oldComponent)
@@ -847,6 +848,47 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		end
 
 		unregister(world, entity)
+	end
+
+	--[=[
+		@within World
+		@return boolean
+
+		Returns true if the entity is unregistered, meaning it has no components. This is useful in cases where components must store references to entities which could have been unregistered by another system.
+
+		Note: Entities do not count as dead inside `factory.remove` callbacks, as the entity remains alive until all of its components have successfully been removed.
+
+		```lua
+		local World = require(path.to.World)
+
+		-- This component acts as a container for frog entities
+		local Marsh = World.factory {
+			add = function(factory, entity: unknown, temperature: number, humidity: number, frogEntities: { unknown })
+				return {
+					frogs = frogEntities,
+					temperature = temperature,
+					humidity = humidity,
+				}
+			end,
+		}
+
+		-- This system removes frogs that have croaked after all other systems
+		local function removeCroakedFrogs()
+			for entity, components in World.query { Marsh } do
+				local marsh = components[Marsh]
+
+				local frogs = marsh.frogs
+				for i = #frogs, 1, -1 do  -- Iterate in reverse so we don't remove entries we have yet to iterate over
+					if World.dead(frogs[i]) then
+						table.remove(frogs, i)  -- The frog has croaked, remove it from the marsh
+					end
+				end
+			end
+		end
+		```
+	]=]
+	function world.dead(entity: any)
+		return not world._entityToData[entity]
 	end
 
 	--[=[
