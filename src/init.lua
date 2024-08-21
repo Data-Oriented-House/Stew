@@ -861,25 +861,28 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		```lua
 		local World = require(path.to.World)
 
-		-- This component acts like a container for other entities
-		local Bubbles = World.factory {
-			add = function(factory, entity: any, bubbleEntities: { number })
-				return bubbleEntities
+		-- This component acts as a container for frog entities
+		local Marsh = World.factory {
+			add = function(factory, entity: any, frogEntities: { number })
+				return {
+					frogs = frogEntities,
+					
+					temperature = 20,
+					humidity = 0.5,
+				}
 			end,
 		}
 
-		-- This system removes bubbles that have popped from Bubbles components, and then removes the component if there are no bubbles left
-		local function removePoppedBubbles()
-			for entity, components in World.query { Bubbles } do
-				local bubbles = components[Bubbles]
-				for i = #bubbles, 1, -1 do
-					if World.dead(bubbles[i]) then
-						table.remove(bubbles, i)
-					end
-				end
+		-- This system removes frogs that have croaked
+		local function removeCroakedFrogs()
+			for entity, components in World.query { Marsh } do
+				local marsh = components[Marsh]
 
-				if #bubbles == 0 then
-					World.kill(entity)
+				local frogs = marsh.frogs
+				for i = #frogs, 1, -1 do  -- Iterate in reverse so we don't remove entries we have yet to iterate over
+					if World.dead(frogs[i]) then
+						table.remove(frogs, i)  -- The frog has croaked, remove it from the marsh
+					end
 				end
 			end
 		end
