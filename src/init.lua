@@ -268,7 +268,7 @@ local function register<W>(world: World<W>, entity: any)
 	universal.indices[entity] = index
 
 	if world.spawned then
-		world.spawned(entity)
+		world.spawned(world, entity)
 	end
 
 	return entityData
