@@ -863,17 +863,16 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 
 		-- This component acts as a container for frog entities
 		local Marsh = World.factory {
-			add = function(factory, entity: any, frogEntities: { number })
+			add = function(factory, entity: unknown, temperature: number, humidity: number, frogEntities: { unknown })
 				return {
 					frogs = frogEntities,
-					
-					temperature = 20,
-					humidity = 0.5,
+					temperature = temperature,
+					humidity = humidity,
 				}
 			end,
 		}
 
-		-- This system removes frogs that have croaked
+		-- This system removes frogs that have croaked after all other systems
 		local function removeCroakedFrogs()
 			for entity, components in World.query { Marsh } do
 				local marsh = components[Marsh]
@@ -888,7 +887,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		end
 		```
 	]=]
-	function world.dead(entity: any): boolean
+	function world.dead(entity: any)
 		return not world._entityToData[entity]
 	end
 
