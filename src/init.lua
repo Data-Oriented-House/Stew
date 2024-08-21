@@ -687,7 +687,7 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		]=]
 		function factory.replace(entity: E, ...: A...): C
 			local entityData = world._entityToData[entity]
-			local oldComponent = if entityData then (entityData[factory] :: C) else nil
+			local oldComponent = if entityData then entityData[factory] :: C else nil
 			if oldComponent then
 				if delete then
 					delete(factory, entity, oldComponent)
@@ -854,29 +854,32 @@ function Stew.world<W>(worldArgs: WorldArgs<W>)
 		@within World
 		@return boolean
 
-		Returns true if the entity is unregistered, meaning it has no components. This is useful in cases where components store entities which are assumed to be alive.
+		Returns true if the entity is unregistered, meaning it has no components. This is useful in cases where components must store references to entities which could have been unregistered by another system.
+
+		Note: Entities do not count as dead inside `factory.remove` callbacks, as the entity remains alive until all of its components have successfully been removed.
 
 		```lua
 		local World = require(path.to.World)
-		
-		local Round = World.factory{
-			add = function(factory, entity: any, playersInRound: { any })
-				return {
-					entities = playersInRound,
-				}
+
+		-- This component acts like a container for other entities
+		local Bubbles = World.factory {
+			add = function(factory, entity: any, bubbleEntities: { number })
+				return bubbleEntities
 			end,
 		}
 
-		local function updateRoundSystem()
-			for entity, components in world.query { Round } do
-				local round = components[Round]
-
-				if World.dead(entity) then
-					-- Some other system killed the entity, make sure to update the round components
-					local index = table.find(round.entities, entity)
-					if index then
-						table.remove(round.entities, index)
+		-- This system removes bubbles that have popped from Bubbles components, and then removes the component if there are no bubbles left
+		local function removePoppedBubbles()
+			for entity, components in World.query { Bubbles } do
+				local bubbles = components[Bubbles]
+				for i = #bubbles, 1, -1 do
+					if World.dead(bubbles[i]) then
+						table.remove(bubbles, i)
 					end
+				end
+
+				if #bubbles == 0 then
+					World.kill(entity)
 				end
 			end
 		end
