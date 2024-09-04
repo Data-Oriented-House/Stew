@@ -361,9 +361,9 @@ end
 --[=[
 	@within Stew
 	@interface World
-	. added (world: Worldfactory: Factory, entity: any, component: any)?
-	. removed (world: World, factory: Factory, entity: any, component: any)?
-	. spawned (world: World, dentity: any) -> ()?
+	. added (world: Worldfactory: Factory, entity: any, component: any) -> ()?
+	. removed (world: World, factory: Factory, entity: any, component: any) -> ()?
+	. spawned (world: World, entity: any) -> ()?
 	. killed (world: World, entity: any) -> ()?
 	. built (world: World, archetype: Archetype) -> ()?
 ]=]
