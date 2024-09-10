@@ -301,8 +301,6 @@ local function updateCollections<W>(world: World<W>, entity: any, entityData: En
 		print('updateCollections', 'e' .. entity)
 	end
 
-	-- local t0 = os.clock()
-
 	for signature, collectionData in world._signatureToCollection do
 		local collectionInclude, collectionExclude = collectionData.include, collectionData.exclude
 
@@ -344,9 +342,6 @@ local function updateCollections<W>(world: World<W>, entity: any, entityData: En
 			end
 		end
 	end
-
-	-- local t1 = os.clock()
-	-- print(t1 - t0)
 end
 
 --[=[
@@ -361,9 +356,9 @@ end
 --[=[
 	@within Stew
 	@interface World
-	. added (world: Worldfactory: Factory, entity: any, component: any)?
-	. removed (world: World, factory: Factory, entity: any, component: any)?
-	. spawned (world: World, dentity: any) -> ()?
+	. added (world: Worldfactory: Factory, entity: any, component: any) -> ()?
+	. removed (world: World, factory: Factory, entity: any, component: any) -> ()?
+	. spawned (world: World, entity: any) -> ()?
 	. killed (world: World, entity: any) -> ()?
 	. built (world: World, archetype: Archetype) -> ()?
 ]=]
