@@ -1,0 +1,25 @@
+{
+  "name": "Stew Test",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Packages": {
+        "$className": "Folder",
+        
+        "Stew": {
+          "$path": "src"
+        },
+        "TestEZ": {
+          "$path": "test/unit/TestEZ"
+        }
+      }
+    },
+
+    "ServerScriptService": {
+      "runner": {
+        "$path": "test/unit/runner"
+      }
+    }
+  }
+}
